@@ -1,0 +1,15 @@
+# Java
+*.java linguist-detectable=true
+
+
+# config Spring / Java
+*.xml linguist-detectable=true
+*.yml linguist-detectable=true
+*.properties linguist-detectable=true
+*.gradle linguist-detectable=true
+pom.xml linguist-detectable=true
+
+
+# documentation
+*.md linguist-documentation
+*.txt linguist-documentation

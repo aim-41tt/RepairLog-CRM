@@ -1,0 +1,14 @@
+# Angular
+*.ts linguist-detectable=true
+*.html linguist-detectable=true
+*.scss linguist-detectable=true
+
+# config Angular / Node
+angular.json linguist-detectable=true
+package.json linguist-detectable=true
+package-lock.json linguist-detectable=true
+yarn.lock linguist-detectable=true
+tsconfig*.json linguist-detectable=true
+
+# documentation
+*.md linguist-documentation
