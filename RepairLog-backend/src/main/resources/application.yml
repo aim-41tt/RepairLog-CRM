@@ -1,0 +1,130 @@
+# CRM RepairLog - Main Application Configuration
+
+spring:
+  application:
+    name: RepairLog-backend
+
+  # Profile Configuration
+  profiles:
+    active: ${SPRING_PROFILE:dev}
+
+  # JPA Configuration
+  jpa:
+    open-in-view: false
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  # Jackson Configuration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      fail-on-empty-beans: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+    time-zone: Europe/Moscow
+
+  # Servlet Multipart Configuration
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: never
+    include-exception: false
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+
+# Management & Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    ru.papkov.repairlog: DEBUG
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/repairlog.log
+    max-size: 10MB
+    max-history: 30
+
+# SpringDoc OpenAPI Configuration (Swagger UI)
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+    doc-expansion: none
+  show-actuator: false
+
+# Application Specific Configuration
+app:
+  # JWT Configuration
+  jwt:
+    secret: ${JWT_SECRET:change_this_to_very_long_random_string_minimum_256_bits_for_production_use}
+    expiration-ms: ${JWT_EXPIRATION:43200000} # 12 hours
+    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
+    issuer: RepairLog-CRM
+    
+  # Security Configuration
+  security:
+    max-login-attempts: ${MAX_LOGIN_ATTEMPTS:5}
+    account-lock-duration-minutes: ${ACCOUNT_LOCK_DURATION_MINUTES:30}
+    password-expiration-days: 90
+    
+  # 2FA Configuration
+  totp:
+    issuer: RepairLog
+    time-step-seconds: 30
+    window-size: 3
+    backup-code-expiration-days: ${BACKUP_CODE_EXPIRATION_DAYS:90}
+    
+  # CORS Configuration
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:4200,http://localhost:80}
+    allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
+    allowed-headers: "*"
+    allow-credentials: true
+    max-age: 3600
