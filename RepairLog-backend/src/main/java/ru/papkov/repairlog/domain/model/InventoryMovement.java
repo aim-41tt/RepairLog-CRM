@@ -77,6 +77,9 @@ public class InventoryMovement extends BaseEntity {
         КОРРЕКТИРОВКА    // Инвентаризация, корректировка остатков
     }
 
+    /** Конструктор по умолчанию (JPA). */
+    public InventoryMovement() {}
+
     public InventoryMovement(InventoryItem inventoryItem, MovementType movementType, Integer quantity,
 			RepairOrder relatedRepairOrder, SupplyRequest relatedSupplyRequest, Employee performedBy, String comment) {
 		this.inventoryItem = inventoryItem;
@@ -87,6 +90,22 @@ public class InventoryMovement extends BaseEntity {
 		this.performedBy = performedBy;
 		this.comment = comment;
 	}
+
+
+    public InventoryItem getInventoryItem() { return inventoryItem; }
+    public void setInventoryItem(InventoryItem inventoryItem) { this.inventoryItem = inventoryItem; }
+    public MovementType getMovementType() { return movementType; }
+    public void setMovementType(MovementType movementType) { this.movementType = movementType; }
+    public Integer getQuantity() { return quantity; }
+    public void setQuantity(Integer quantity) { this.quantity = quantity; }
+    public RepairOrder getRelatedRepairOrder() { return relatedRepairOrder; }
+    public void setRelatedRepairOrder(RepairOrder relatedRepairOrder) { this.relatedRepairOrder = relatedRepairOrder; }
+    public SupplyRequest getRelatedSupplyRequest() { return relatedSupplyRequest; }
+    public void setRelatedSupplyRequest(SupplyRequest relatedSupplyRequest) { this.relatedSupplyRequest = relatedSupplyRequest; }
+    public Employee getPerformedBy() { return performedBy; }
+    public void setPerformedBy(Employee performedBy) { this.performedBy = performedBy; }
+    public String getComment() { return comment; }
+    public void setComment(String comment) { this.comment = comment; }
 
 	@Override
     public String toString() {

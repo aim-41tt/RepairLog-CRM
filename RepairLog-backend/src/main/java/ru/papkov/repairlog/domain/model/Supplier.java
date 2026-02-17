@@ -32,6 +32,31 @@ public class Supplier extends BaseEntity {
     @Column(name = "email", length = 100)
     private String email;
 
+
+    /**
+     * Контактное лицо поставщика.
+     */
+    @Column(name = "contact_person", length = 100)
+    private String contactPerson;
+
+    /**
+     * Адрес поставщика.
+     */
+    @Column(name = "address", columnDefinition = "TEXT")
+    private String address;
+
+    /**
+     * ИНН поставщика.
+     */
+    @Column(name = "inn", length = 12)
+    private String inn;
+
+    /**
+     * Активен ли поставщик.
+     */
+    @Column(name = "is_active", nullable = false)
+    private Boolean active = true;
+
     /**
 	 * @return the name
 	 */
@@ -73,6 +98,16 @@ public class Supplier extends BaseEntity {
 	public void setEmail(String email) {
 		this.email = email;
 	}
+
+
+	public String getContactPerson() { return contactPerson; }
+	public void setContactPerson(String contactPerson) { this.contactPerson = contactPerson; }
+	public String getAddress() { return address; }
+	public void setAddress(String address) { this.address = address; }
+	public String getInn() { return inn; }
+	public void setInn(String inn) { this.inn = inn; }
+	public Boolean getActive() { return active; }
+	public void setActive(Boolean active) { this.active = active; }
 
 	@Override
     public String toString() {

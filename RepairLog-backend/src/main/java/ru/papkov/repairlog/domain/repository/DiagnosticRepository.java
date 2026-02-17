@@ -9,13 +9,21 @@ import java.util.Optional;
 
 /**
  * Repository для работы с диагностикой.
- * 
+ *
  * @author aim-41tt
  */
 @Repository
 public interface DiagnosticRepository extends JpaRepository<Diagnostic, Long> {
 
     Optional<Diagnostic> findByRepairOrder(RepairOrder repairOrder);
-    
+
     boolean existsByRepairOrder(RepairOrder repairOrder);
+
+    /**
+     * Найти диагностику по ID заказа на ремонт.
+     *
+     * @param repairOrderId ID заказа
+     * @return диагностика если найдена
+     */
+    Optional<Diagnostic> findByRepairOrderId(Long repairOrderId);
 }

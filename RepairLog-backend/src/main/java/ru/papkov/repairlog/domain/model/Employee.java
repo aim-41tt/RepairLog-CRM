@@ -8,8 +8,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- *  класс для сотрудников системы.
- * Содержит поля для аутентификации, 2FA, безопасности и связи с ролями.
+ * Сущность сотрудника системы.
+ * Содержит поля для аутентификации, безопасности и связи с ролями.
  * 
  * @author aim-41tt
  */
@@ -62,23 +62,6 @@ public class Employee extends BaseEntity {
     
     private Boolean blocked = false;
 
-    // ========== Поля для 2FA ==========
-
-    /**
-     * Секретный ключ для TOTP (Time-based One-Time Password).
-     * Хранится в зашифрованном виде.
-     */
-    @Column(name = "totp_secret", length = 32)
-    private String totpSecret;
-
-    /**
-     * Флаг включения двухфакторной аутентификации.
-     * Обязательна для роли ADMIN.
-     */
-    @Column(name = "totp_enabled", nullable = false)
-    
-    private Boolean totpEnabled = false;
-
     // ========== Поля для безопасности ==========
 
     /**
@@ -120,13 +103,6 @@ public class Employee extends BaseEntity {
     )
     
     private Set<Role> roles = new HashSet<>();
-
-    /**
-     * Резервные коды для 2FA.
-     */
-    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true)
-    
-    private Set<EmployeeBackupCode> backupCodes = new HashSet<>();
 
     // ========== Вспомогательные методы ==========
 
@@ -285,34 +261,6 @@ public class Employee extends BaseEntity {
 	}
 
 	/**
-	 * @return the totpSecret
-	 */
-	public String getTotpSecret() {
-		return totpSecret;
-	}
-
-	/**
-	 * @param totpSecret the totpSecret to set
-	 */
-	public void setTotpSecret(String totpSecret) {
-		this.totpSecret = totpSecret;
-	}
-
-	/**
-	 * @return the totpEnabled
-	 */
-	public Boolean getTotpEnabled() {
-		return totpEnabled;
-	}
-
-	/**
-	 * @param totpEnabled the totpEnabled to set
-	 */
-	public void setTotpEnabled(Boolean totpEnabled) {
-		this.totpEnabled = totpEnabled;
-	}
-
-	/**
 	 * @return the lastPasswordChange
 	 */
 	public LocalDateTime getLastPasswordChange() {
@@ -382,19 +330,6 @@ public class Employee extends BaseEntity {
 		this.roles = roles;
 	}
 
-	/**
-	 * @return the backupCodes
-	 */
-	public Set<EmployeeBackupCode> getBackupCodes() {
-		return backupCodes;
-	}
-
-	/**
-	 * @param backupCodes the backupCodes to set
-	 */
-	public void setBackupCodes(Set<EmployeeBackupCode> backupCodes) {
-		this.backupCodes = backupCodes;
-	}
 
 	@Override
     public String toString() {

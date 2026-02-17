@@ -14,7 +14,7 @@ import java.util.Optional;
 @Repository
 public interface DeviceTypeRepository extends JpaRepository<DeviceType, Long> {
 
-    Optional<Device Type> findByName(String name);
+    Optional<DeviceType> findByName(String name);
     
     boolean existsByName(String name);
 }

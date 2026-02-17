@@ -2,13 +2,14 @@ package ru.papkov.repairlog.domain.model;
 
 import jakarta.persistence.*;
 
-
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
 /**
- *  класс для заявок на поставку запчастей и устройств.
- * Создаётся когда необходимых компонентов нет на складе.
+ * Сущность заявки на поставку запчастей и компонентов.
+ * Создаётся техником или администратором, когда необходимых компонентов нет на складе.
  * 
  * @author aim-41tt
  */
@@ -22,6 +23,12 @@ import java.util.Set;
 public class SupplyRequest extends BaseEntity {
 	
 	private static final long serialVersionUID = 1L;
+
+    /**
+     * Номер заявки (уникальный, генерируется автоматически).
+     */
+    @Column(name = "request_number", unique = true, length = 30)
+    private String requestNumber;
 
 	/**
      * Поставщик.
@@ -57,6 +64,31 @@ public class SupplyRequest extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "status_id", nullable = false)
     private SupplyRequestStatus status;
+
+    /**
+     * Администратор, подтвердивший заявку.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by")
+    private Employee approvedBy;
+
+    /**
+     * Общая сумма заявки.
+     */
+    @Column(name = "total_amount", precision = 12, scale = 2)
+    private BigDecimal totalAmount;
+
+    /**
+     * Комментарий к заявке.
+     */
+    @Column(name = "comment", columnDefinition = "TEXT")
+    private String comment;
+
+    /**
+     * Ожидаемая дата доставки.
+     */
+    @Column(name = "expected_delivery_date")
+    private LocalDateTime expectedDeliveryDate;
 
     /**
      * Позиции в заявке (запрашиваемые товары).
@@ -164,6 +196,27 @@ public class SupplyRequest extends BaseEntity {
 	public void setItems(Set<SupplyRequestItem> items) {
 		this.items = items;
 	}
+
+	/** @return the requestNumber */
+	public String getRequestNumber() { return requestNumber; }
+	/** @param requestNumber the requestNumber to set */
+	public void setRequestNumber(String requestNumber) { this.requestNumber = requestNumber; }
+	/** @return the approvedBy */
+	public Employee getApprovedBy() { return approvedBy; }
+	/** @param approvedBy the approvedBy to set */
+	public void setApprovedBy(Employee approvedBy) { this.approvedBy = approvedBy; }
+	/** @return the totalAmount */
+	public BigDecimal getTotalAmount() { return totalAmount; }
+	/** @param totalAmount the totalAmount to set */
+	public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+	/** @return the comment */
+	public String getComment() { return comment; }
+	/** @param comment the comment to set */
+	public void setComment(String comment) { this.comment = comment; }
+	/** @return the expectedDeliveryDate */
+	public LocalDateTime getExpectedDeliveryDate() { return expectedDeliveryDate; }
+	/** @param expectedDeliveryDate the expectedDeliveryDate to set */
+	public void setExpectedDeliveryDate(LocalDateTime expectedDeliveryDate) { this.expectedDeliveryDate = expectedDeliveryDate; }
 
 	@Override
     public String toString() {

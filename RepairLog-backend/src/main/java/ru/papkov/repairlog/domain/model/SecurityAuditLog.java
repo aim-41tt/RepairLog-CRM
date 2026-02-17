@@ -108,9 +108,6 @@ public class SecurityAuditLog {
         DATA_UPDATE,
         DATA_DELETE,
         PASSWORD_CHANGE,
-        TWO_FA_ENABLED,
-        TWO_FA_DISABLED,
-        BACKUP_CODE_USED,
         SESSION_TERMINATED
     }
 

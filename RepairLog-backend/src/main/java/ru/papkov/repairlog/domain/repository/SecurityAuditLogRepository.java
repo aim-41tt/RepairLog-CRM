@@ -30,6 +30,15 @@ public interface SecurityAuditLogRepository extends JpaRepository<SecurityAuditL
     Page<SecurityAuditLog> findByEmployee(Employee employee, Pageable pageable);
 
     /**
+     * Найти все записи аудита по ID сотрудника.
+     *
+     * @param employeeId ID сотрудника
+     * @param pageable   параметры пагинации
+     * @return страница записей аудита
+     */
+    Page<SecurityAuditLog> findByEmployeeId(Long employeeId, Pageable pageable);
+
+    /**
      * Найти все записи аудита по типу события.
      *
      * @param eventType тип события

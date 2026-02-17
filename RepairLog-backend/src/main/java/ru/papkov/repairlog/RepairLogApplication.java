@@ -2,7 +2,6 @@ package ru.papkov.repairlog;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 /**
  * Главный класс приложения CRM RepairLog.
@@ -16,7 +15,6 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
  * @since 2026-02-06
  */
 @SpringBootApplication
-@EnableJpaAuditing
 public class RepairLogApplication {
 
     /**

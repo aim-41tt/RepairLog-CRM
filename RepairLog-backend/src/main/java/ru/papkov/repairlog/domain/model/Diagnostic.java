@@ -13,6 +13,8 @@ import jakarta.persistence.*;
 @Table(name = "diagnostics")
 public class Diagnostic extends BaseEntity {
 
+	private static final long serialVersionUID = 1L;
+
     /**
      * Заказ на ремонт (one-to-one).
      */

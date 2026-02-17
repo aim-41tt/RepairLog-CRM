@@ -19,7 +19,11 @@ import java.util.List;
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
     List<Notification> findByClient(Client client);
-    
+
+    List<Notification> findByClientId(Long clientId);
+
+    List<Notification> findByRepairOrderId(Long repairOrderId);
+
     List<Notification> findByStatus(Notification.NotificationStatus status);
     
     @Query("SELECT n FROM Notification n WHERE n.status = 'PENDING' ORDER BY n.createdAt ASC")

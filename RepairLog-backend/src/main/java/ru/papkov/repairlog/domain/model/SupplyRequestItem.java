@@ -2,12 +2,11 @@ package ru.papkov.repairlog.domain.model;
 
 import jakarta.persistence.*;
 
-
 import java.math.BigDecimal;
 
 /**
- *  класс для позиций в заявках на поставку.
- * Каждая позиция указывает товар и запрашиваемое количество.
+ * Сущность позиции в заявке на поставку.
+ * Каждая позиция указывает наименование, артикул, количество и цену.
  * 
  * @author aim-41tt
  */
@@ -27,11 +26,23 @@ public class SupplyRequestItem {
     private SupplyRequest supplyRequest;
 
     /**
-     * Складской товар.
+     * Связанная складская позиция (опционально, может быть null если товар ещё не на складе).
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "inventory_item_id", nullable = false)
+    @JoinColumn(name = "inventory_item_id")
     private InventoryItem inventoryItem;
+
+    /**
+     * Наименование запрашиваемой позиции.
+     */
+    @Column(name = "item_name", nullable = false, length = 200)
+    private String itemName;
+
+    /**
+     * Артикул / каталожный номер.
+     */
+    @Column(name = "part_number", length = 100)
+    private String partNumber;
 
     /**
      * Запрашиваемое количество.
@@ -40,89 +51,43 @@ public class SupplyRequestItem {
     private Integer quantity;
 
     /**
-     * Ожидаемая цена за единицу (может быть null если неизвестна).
+     * Цена за единицу.
      */
-    @Column(name = "expected_price", precision = 12, scale = 2)
-    private BigDecimal expectedPrice;
+    @Column(name = "unit_price", precision = 12, scale = 2)
+    private BigDecimal unitPrice;
 
     /**
-	 * @return the id
-	 */
-	public Long getId() {
-		return id;
-	}
+     * Общая стоимость позиции (quantity * unitPrice).
+     */
+    @Column(name = "total_price", precision = 12, scale = 2)
+    private BigDecimal totalPrice;
 
-	/**
-	 * @param id the id to set
-	 */
-	public void setId(Long id) {
-		this.id = id;
-	}
+    // ========== Getters / Setters ==========
 
-	/**
-	 * @return the supplyRequest
-	 */
-	public SupplyRequest getSupplyRequest() {
-		return supplyRequest;
-	}
-
-	/**
-	 * @param supplyRequest the supplyRequest to set
-	 */
-	public void setSupplyRequest(SupplyRequest supplyRequest) {
-		this.supplyRequest = supplyRequest;
-	}
-
-	/**
-	 * @return the inventoryItem
-	 */
-	public InventoryItem getInventoryItem() {
-		return inventoryItem;
-	}
-
-	/**
-	 * @param inventoryItem the inventoryItem to set
-	 */
-	public void setInventoryItem(InventoryItem inventoryItem) {
-		this.inventoryItem = inventoryItem;
-	}
-
-	/**
-	 * @return the quantity
-	 */
-	public Integer getQuantity() {
-		return quantity;
-	}
-
-	/**
-	 * @param quantity the quantity to set
-	 */
-	public void setQuantity(Integer quantity) {
-		this.quantity = quantity;
-	}
-
-	/**
-	 * @return the expectedPrice
-	 */
-	public BigDecimal getExpectedPrice() {
-		return expectedPrice;
-	}
-
-	/**
-	 * @param expectedPrice the expectedPrice to set
-	 */
-	public void setExpectedPrice(BigDecimal expectedPrice) {
-		this.expectedPrice = expectedPrice;
-	}
+	public Long getId() { return id; }
+	public void setId(Long id) { this.id = id; }
+	public SupplyRequest getSupplyRequest() { return supplyRequest; }
+	public void setSupplyRequest(SupplyRequest supplyRequest) { this.supplyRequest = supplyRequest; }
+	public InventoryItem getInventoryItem() { return inventoryItem; }
+	public void setInventoryItem(InventoryItem inventoryItem) { this.inventoryItem = inventoryItem; }
+	public String getItemName() { return itemName; }
+	public void setItemName(String itemName) { this.itemName = itemName; }
+	public String getPartNumber() { return partNumber; }
+	public void setPartNumber(String partNumber) { this.partNumber = partNumber; }
+	public Integer getQuantity() { return quantity; }
+	public void setQuantity(Integer quantity) { this.quantity = quantity; }
+	public BigDecimal getUnitPrice() { return unitPrice; }
+	public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
+	public BigDecimal getTotalPrice() { return totalPrice; }
+	public void setTotalPrice(BigDecimal totalPrice) { this.totalPrice = totalPrice; }
 
 	@Override
     public String toString() {
         return "SupplyRequestItem{" +
             "id=" + id +
-            ", supplyRequestId=" + (supplyRequest != null ? supplyRequest.getId() : null) +
-            ", inventoryItemId=" + (inventoryItem != null ? inventoryItem.getId() : null) +
+            ", itemName='" + itemName + '\'' +
             ", quantity=" + quantity +
-            ", expectedPrice=" + expectedPrice +
+            ", unitPrice=" + unitPrice +
             '}';
     }
 }
