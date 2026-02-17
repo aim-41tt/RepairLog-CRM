@@ -1,0 +1,142 @@
+# ════════════════════════════════════════════════════════════════════════════
+# CRM RepairLog — Docker Compose
+# Полный стек: PostgreSQL + Redis + Backend
+#
+# Использование:
+#   1. cp example.env .env
+#   2. Отредактируйте .env (пароли, JWT-секрет)
+#   3. docker-compose up -d
+#   4. http://localhost:8080/swagger-ui.html
+#
+# Author: aim-41tt
+# ════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  # --------------------------------------------------------------------------
+  # PostgreSQL — основная БД
+  # --------------------------------------------------------------------------
+  postgres:
+    image: postgres:latest
+    container_name: repairlog-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # timezone чтобы NOW() и created_at были в Москве
+      TZ: Europe/Moscow
+    ports:
+      - "${DB_EXTERNAL_PORT:-5432}:5432"
+    volumes:
+      # Персистентное хранение данных
+      - pgdata:/var/lib/postgresql
+      # SQL-скрипт инициализации — выполняется ОДИН раз при первом запуске
+      # Если нужно пересоздать БД: docker-compose down -v && docker-compose up -d
+      - ./sql/repairLog-UNIFIED.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - repairlog-net
+
+  # --------------------------------------------------------------------------
+  # Redis — хранилище JWT-сессий
+  # --------------------------------------------------------------------------
+  redis:
+    image: redis:latest
+    container_name: repairlog-redis
+    restart: unless-stopped
+    # Если REDIS_PASSWORD пустой — Redis стартует без пароля
+    command: >
+      sh -c '
+        if [ -n "$$REDIS_PASSWORD" ]; then
+          redis-server --requirepass "$$REDIS_PASSWORD" --maxmemory 128mb --maxmemory-policy allkeys-lru
+        else
+          redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+        fi
+      '
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - "${REDIS_EXTERNAL_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - repairlog-net
+
+  # --------------------------------------------------------------------------
+  # Backend — Spring Boot приложение
+  # --------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./RepairLog-backend
+      dockerfile: Dockerfile
+    container_name: repairlog-backend
+    restart: unless-stopped
+    environment:
+      # Spring профиль
+      SPRING_PROFILE: ${SPRING_PROFILE}
+
+      # PostgreSQL — имя сервиса compose = hostname внутри сети
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+
+      # Security
+      MAX_LOGIN_ATTEMPTS: ${MAX_LOGIN_ATTEMPTS}
+      ACCOUNT_LOCK_DURATION_MINUTES: ${ACCOUNT_LOCK_DURATION_MINUTES}
+
+      # CORS — домены фронтенда
+      CORS_ORIGINS: ${CORS_ORIGINS}
+
+      # Порт приложения (внутри контейнера всегда 8080)
+      SERVER_PORT: 8080
+
+      # Timezone
+      TZ: Europe/Moscow
+    ports:
+      - "${BACKEND_EXTERNAL_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - repairlog-net
+
+# ============================================================================
+# Volumes — данные переживают docker-compose down
+# Для полной очистки: docker-compose down -v
+# ============================================================================
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
+
+# ============================================================================
+# Network — изолированная сеть, сервисы видят друг друга по имени
+# ============================================================================
+networks:
+  repairlog-net:
+    driver: bridge
