@@ -21,8 +21,7 @@ import ru.papkov.repairlog.application.dto.inventory.InventoryItemResponse;
 import ru.papkov.repairlog.application.dto.notification.NotificationResponse;
 import ru.papkov.repairlog.application.dto.supplier.CreateSupplierRequest;
 import ru.papkov.repairlog.application.dto.supplier.SupplierResponse;
-import ru.papkov.repairlog.application.dto.supply.CreateSupplyRequestRequest;
-import ru.papkov.repairlog.application.dto.supply.SupplyRequestResponse;
+import ru.papkov.repairlog.application.dto.supply.*;
 import ru.papkov.repairlog.application.service.*;
 
 import java.time.LocalDateTime;
@@ -48,6 +47,8 @@ public class AdminController {
     private final SupplyRequestService supplyRequestService;
     private final NotificationService notificationService;
     private final AuditLogService auditLogService;
+    private final SupplyDashboardService supplyDashboardService;
+    private final SupplySettingService supplySettingService;
 
     public AdminController(EmployeeService employeeService,
                            AuthenticationService authService,
@@ -55,7 +56,9 @@ public class AdminController {
                            SupplierService supplierService,
                            SupplyRequestService supplyRequestService,
                            NotificationService notificationService,
-                           AuditLogService auditLogService) {
+                           AuditLogService auditLogService,
+                           SupplyDashboardService supplyDashboardService,
+                           SupplySettingService supplySettingService) {
         this.employeeService = employeeService;
         this.authService = authService;
         this.inventoryService = inventoryService;
@@ -63,6 +66,8 @@ public class AdminController {
         this.supplyRequestService = supplyRequestService;
         this.notificationService = notificationService;
         this.auditLogService = auditLogService;
+        this.supplyDashboardService = supplyDashboardService;
+        this.supplySettingService = supplySettingService;
     }
 
     // ==================== Сотрудники ====================
@@ -181,6 +186,18 @@ public class AdminController {
         return ResponseEntity.ok(Map.of("message", "Статус поставщика обновлён"));
     }
 
+    @GetMapping("/suppliers/active")
+    @Operation(summary = "Активные поставщики")
+    public ResponseEntity<List<SupplierResponse>> getActiveSuppliers() {
+        return ResponseEntity.ok(supplierService.getActive());
+    }
+
+    @GetMapping("/suppliers/integration-type/{type}")
+    @Operation(summary = "Поставщики по типу интеграции")
+    public ResponseEntity<List<SupplierResponse>> getSuppliersByIntegrationType(@PathVariable String type) {
+        return ResponseEntity.ok(supplierService.getByIntegrationType(type));
+    }
+
     // ==================== Заявки на поставку ====================
 
     @GetMapping("/supply-requests")
@@ -222,10 +239,55 @@ public class AdminController {
         return ResponseEntity.ok(supplyRequestService.cancel(id));
     }
 
+    @PostMapping("/supply-requests/{id}/ordered")
+    @Operation(summary = "Отметить заявку как заказанную")
+    public ResponseEntity<SupplyRequestResponse> markOrdered(@PathVariable Long id) {
+        return ResponseEntity.ok(supplyRequestService.markOrdered(id));
+    }
+
+    @PostMapping("/supply-requests/{id}/in-transit")
+    @Operation(summary = "Отметить заявку как 'в пути'")
+    public ResponseEntity<SupplyRequestResponse> markInTransit(@PathVariable Long id) {
+        return ResponseEntity.ok(supplyRequestService.markInTransit(id));
+    }
+
     @PostMapping("/supply-requests/{id}/delivered")
     @Operation(summary = "Отметить заявку как доставленную")
     public ResponseEntity<SupplyRequestResponse> markDelivered(@PathVariable Long id) {
         return ResponseEntity.ok(supplyRequestService.markDelivered(id));
+    }
+
+    @PostMapping("/supply-requests/{id}/assign-supplier")
+    @Operation(summary = "Привязать поставщика к заявке")
+    public ResponseEntity<SupplyRequestResponse> assignSupplier(
+            @PathVariable Long id,
+            @Valid @RequestBody AssignSupplierRequest request) {
+        return ResponseEntity.ok(supplyRequestService.assignSupplier(id, request.getSupplierId()));
+    }
+
+    // ==================== Дашборд поставок ====================
+
+    @GetMapping("/supply-dashboard")
+    @Operation(summary = "Дашборд управления поставками")
+    public ResponseEntity<SupplyDashboardResponse> getSupplyDashboard() {
+        return ResponseEntity.ok(supplyDashboardService.getDashboard());
+    }
+
+    // ==================== Настройки поставок ====================
+
+    @GetMapping("/supply-settings")
+    @Operation(summary = "Все настройки поставок")
+    public ResponseEntity<List<SupplySettingResponse>> getSupplySettings() {
+        return ResponseEntity.ok(supplySettingService.getAll());
+    }
+
+    @PutMapping("/supply-settings/{key}")
+    @Operation(summary = "Обновить настройку поставок")
+    public ResponseEntity<SupplySettingResponse> updateSupplySetting(
+            @PathVariable String key,
+            @Valid @RequestBody UpdateSupplySettingRequest request,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(supplySettingService.update(key, request, user.getUsername()));
     }
 
     // ==================== Уведомления ====================

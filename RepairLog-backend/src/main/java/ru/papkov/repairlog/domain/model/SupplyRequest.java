@@ -1,6 +1,7 @@
 package ru.papkov.repairlog.domain.model;
 
 import jakarta.persistence.*;
+import ru.papkov.repairlog.domain.model.enums.SupplyRequestSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -31,10 +32,10 @@ public class SupplyRequest extends BaseEntity {
     private String requestNumber;
 
 	/**
-     * Поставщик.
+     * Поставщик (может быть null для авто-сформированных заявок без привязки).
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "supplier_id", nullable = false)
+    @JoinColumn(name = "supplier_id")
     private Supplier supplier;
 
     /**
@@ -89,6 +90,16 @@ public class SupplyRequest extends BaseEntity {
      */
     @Column(name = "expected_delivery_date")
     private LocalDateTime expectedDeliveryDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source", nullable = false, length = 20)
+    private SupplyRequestSource source = SupplyRequestSource.MANUAL;
+
+    @Column(name = "external_order_id", length = 100)
+    private String externalOrderId;
+
+    @Column(name = "external_order_status", length = 50)
+    private String externalOrderStatus;
 
     /**
      * Позиции в заявке (запрашиваемые товары).
@@ -217,6 +228,13 @@ public class SupplyRequest extends BaseEntity {
 	public LocalDateTime getExpectedDeliveryDate() { return expectedDeliveryDate; }
 	/** @param expectedDeliveryDate the expectedDeliveryDate to set */
 	public void setExpectedDeliveryDate(LocalDateTime expectedDeliveryDate) { this.expectedDeliveryDate = expectedDeliveryDate; }
+
+	public SupplyRequestSource getSource() { return source; }
+	public void setSource(SupplyRequestSource source) { this.source = source; }
+	public String getExternalOrderId() { return externalOrderId; }
+	public void setExternalOrderId(String externalOrderId) { this.externalOrderId = externalOrderId; }
+	public String getExternalOrderStatus() { return externalOrderStatus; }
+	public void setExternalOrderStatus(String externalOrderStatus) { this.externalOrderStatus = externalOrderStatus; }
 
 	@Override
     public String toString() {

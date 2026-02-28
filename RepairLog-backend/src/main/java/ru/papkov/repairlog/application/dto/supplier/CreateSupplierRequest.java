@@ -26,6 +26,14 @@ public class CreateSupplierRequest {
     @Size(max = 12, message = "ИНН не должен превышать 12 символов")
     private String inn;
 
+    private String integrationType;
+    private String priceSource;
+    private String orderMethod;
+    private String websiteUrl;
+    private String contactMessenger;
+    private String priceListEmail;
+    private String externalSupplierId;
+
     public CreateSupplierRequest() {}
 
     public String getName() { return name; }
@@ -40,4 +48,18 @@ public class CreateSupplierRequest {
     public void setAddress(String address) { this.address = address; }
     public String getInn() { return inn; }
     public void setInn(String inn) { this.inn = inn; }
+    public String getIntegrationType() { return integrationType; }
+    public void setIntegrationType(String integrationType) { this.integrationType = integrationType; }
+    public String getPriceSource() { return priceSource; }
+    public void setPriceSource(String priceSource) { this.priceSource = priceSource; }
+    public String getOrderMethod() { return orderMethod; }
+    public void setOrderMethod(String orderMethod) { this.orderMethod = orderMethod; }
+    public String getWebsiteUrl() { return websiteUrl; }
+    public void setWebsiteUrl(String websiteUrl) { this.websiteUrl = websiteUrl; }
+    public String getContactMessenger() { return contactMessenger; }
+    public void setContactMessenger(String contactMessenger) { this.contactMessenger = contactMessenger; }
+    public String getPriceListEmail() { return priceListEmail; }
+    public void setPriceListEmail(String priceListEmail) { this.priceListEmail = priceListEmail; }
+    public String getExternalSupplierId() { return externalSupplierId; }
+    public void setExternalSupplierId(String externalSupplierId) { this.externalSupplierId = externalSupplierId; }
 }

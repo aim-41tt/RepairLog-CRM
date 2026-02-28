@@ -178,7 +178,8 @@ public class TechnicianController {
 
     @GetMapping("/supply-requests/my")
     @Operation(summary = "Мои заявки на поставку")
-    public ResponseEntity<List<SupplyRequestResponse>> getMySupplyRequests() {
-        return ResponseEntity.ok(supplyRequestService.getAll());
+    public ResponseEntity<List<SupplyRequestResponse>> getMySupplyRequests(
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(supplyRequestService.getByEmployee(user.getUsername()));
     }
 }

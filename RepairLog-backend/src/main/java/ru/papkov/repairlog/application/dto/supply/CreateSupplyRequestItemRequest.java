@@ -24,6 +24,8 @@ public class CreateSupplyRequestItemRequest {
 
     private BigDecimal unitPrice;
 
+    private Long inventoryItemId;
+
     public CreateSupplyRequestItemRequest() {}
 
     public String getItemName() { return itemName; }
@@ -34,4 +36,6 @@ public class CreateSupplyRequestItemRequest {
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
     public BigDecimal getUnitPrice() { return unitPrice; }
     public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
+    public Long getInventoryItemId() { return inventoryItemId; }
+    public void setInventoryItemId(Long inventoryItemId) { this.inventoryItemId = inventoryItemId; }
 }

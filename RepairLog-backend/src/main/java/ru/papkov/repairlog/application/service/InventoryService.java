@@ -102,6 +102,15 @@ public class InventoryService {
                 .orElseThrow(() -> new EntityNotFoundException("Товар не найден: " + id));
     }
 
+    /**
+     * Получить все позиции, нуждающиеся в дозаказе (для авто-заказа).
+     */
+    @Transactional(readOnly = true)
+    public List<InventoryItemResponse> getItemsNeedingReorder() {
+        return inventoryItemRepository.findItemsNeedingReorder().stream()
+                .map(this::toResponse).collect(Collectors.toList());
+    }
+
     private InventoryItemResponse toResponse(InventoryItem item) {
         InventoryItemResponse r = new InventoryItemResponse();
         r.setId(item.getId());
@@ -114,6 +123,17 @@ public class InventoryService {
         r.setInStock(item.getInStock());
         r.setMinStockLevel(item.getMinStockLevel());
         r.setCreatedAt(item.getCreatedAt());
+
+        // новые поля supply management
+        if (item.getPreferredSupplier() != null) {
+            r.setPreferredSupplierId(item.getPreferredSupplier().getId());
+            r.setPreferredSupplierName(item.getPreferredSupplier().getName());
+        }
+        r.setLastPurchasePrice(item.getLastPurchasePrice());
+        r.setCurrentMarketPrice(item.getCurrentMarketPrice());
+        r.setPriceUpdatedAt(item.getPriceUpdatedAt());
+        r.setReorderQuantity(item.getReorderQuantity());
+        r.setPackSize(item.getPackSize());
 
         // определяем статус запаса
         if (item.getQuantity() == 0) r.setStockStatus("OUT_OF_STOCK");

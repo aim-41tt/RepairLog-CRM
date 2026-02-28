@@ -2,8 +2,8 @@ package ru.papkov.repairlog.domain.model;
 
 import jakarta.persistence.*;
 
-
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  *  класс для складских запасов (запчасти и устройства).
@@ -68,8 +68,26 @@ public class InventoryItem extends BaseEntity {
      * Минимальный уровень запаса для контроля критического остатка.
      */
     @Column(name = "min_stock_level")
-    
     private Integer minStockLevel = 0;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "preferred_supplier_id")
+    private Supplier preferredSupplier;
+
+    @Column(name = "last_purchase_price", precision = 12, scale = 2)
+    private BigDecimal lastPurchasePrice;
+
+    @Column(name = "current_market_price", precision = 12, scale = 2)
+    private BigDecimal currentMarketPrice;
+
+    @Column(name = "price_updated_at")
+    private LocalDateTime priceUpdatedAt;
+
+    @Column(name = "reorder_quantity")
+    private Integer reorderQuantity = 0;
+
+    @Column(name = "pack_size", nullable = false)
+    private Integer packSize = 1;
 
     /**
      * Проверить, ниже ли текущее количество минимального уровня.
@@ -212,6 +230,19 @@ public class InventoryItem extends BaseEntity {
 	public void setMinStockLevel(Integer minStockLevel) {
 		this.minStockLevel = minStockLevel;
 	}
+
+	public Supplier getPreferredSupplier() { return preferredSupplier; }
+	public void setPreferredSupplier(Supplier preferredSupplier) { this.preferredSupplier = preferredSupplier; }
+	public BigDecimal getLastPurchasePrice() { return lastPurchasePrice; }
+	public void setLastPurchasePrice(BigDecimal lastPurchasePrice) { this.lastPurchasePrice = lastPurchasePrice; }
+	public BigDecimal getCurrentMarketPrice() { return currentMarketPrice; }
+	public void setCurrentMarketPrice(BigDecimal currentMarketPrice) { this.currentMarketPrice = currentMarketPrice; }
+	public LocalDateTime getPriceUpdatedAt() { return priceUpdatedAt; }
+	public void setPriceUpdatedAt(LocalDateTime priceUpdatedAt) { this.priceUpdatedAt = priceUpdatedAt; }
+	public Integer getReorderQuantity() { return reorderQuantity; }
+	public void setReorderQuantity(Integer reorderQuantity) { this.reorderQuantity = reorderQuantity; }
+	public Integer getPackSize() { return packSize; }
+	public void setPackSize(Integer packSize) { this.packSize = packSize; }
 
 	@Override
     public String toString() {

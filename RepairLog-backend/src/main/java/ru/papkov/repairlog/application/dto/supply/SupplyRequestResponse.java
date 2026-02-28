@@ -23,6 +23,11 @@ public class SupplyRequestResponse {
     private LocalDateTime createdAt;
     private LocalDateTime expectedDeliveryDate;
     private List<SupplyRequestItemResponse> items;
+    private Long relatedRepairOrderId;
+    private String relatedOrderNumber;
+    private String source;
+    private String externalOrderId;
+    private String externalOrderStatus;
 
     public SupplyRequestResponse() {}
 
@@ -50,4 +55,14 @@ public class SupplyRequestResponse {
     public void setExpectedDeliveryDate(LocalDateTime expectedDeliveryDate) { this.expectedDeliveryDate = expectedDeliveryDate; }
     public List<SupplyRequestItemResponse> getItems() { return items; }
     public void setItems(List<SupplyRequestItemResponse> items) { this.items = items; }
+    public Long getRelatedRepairOrderId() { return relatedRepairOrderId; }
+    public void setRelatedRepairOrderId(Long relatedRepairOrderId) { this.relatedRepairOrderId = relatedRepairOrderId; }
+    public String getRelatedOrderNumber() { return relatedOrderNumber; }
+    public void setRelatedOrderNumber(String relatedOrderNumber) { this.relatedOrderNumber = relatedOrderNumber; }
+    public String getSource() { return source; }
+    public void setSource(String source) { this.source = source; }
+    public String getExternalOrderId() { return externalOrderId; }
+    public void setExternalOrderId(String externalOrderId) { this.externalOrderId = externalOrderId; }
+    public String getExternalOrderStatus() { return externalOrderStatus; }
+    public void setExternalOrderStatus(String externalOrderStatus) { this.externalOrderStatus = externalOrderStatus; }
 }

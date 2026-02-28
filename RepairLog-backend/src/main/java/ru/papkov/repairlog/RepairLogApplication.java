@@ -2,6 +2,7 @@ package ru.papkov.repairlog;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Главный класс приложения CRM RepairLog.
@@ -15,6 +16,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @since 2026-02-06
  */
 @SpringBootApplication
+@EnableScheduling
 public class RepairLogApplication {
 
     /**

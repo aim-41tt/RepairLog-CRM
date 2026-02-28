@@ -20,6 +20,13 @@ public class InventoryItemResponse {
     private int minStockLevel;
     private String stockStatus;
     private LocalDateTime createdAt;
+    private Long preferredSupplierId;
+    private String preferredSupplierName;
+    private BigDecimal lastPurchasePrice;
+    private BigDecimal currentMarketPrice;
+    private LocalDateTime priceUpdatedAt;
+    private Integer reorderQuantity;
+    private Integer packSize;
 
     public InventoryItemResponse() {}
 
@@ -45,4 +52,18 @@ public class InventoryItemResponse {
     public void setStockStatus(String stockStatus) { this.stockStatus = stockStatus; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Long getPreferredSupplierId() { return preferredSupplierId; }
+    public void setPreferredSupplierId(Long preferredSupplierId) { this.preferredSupplierId = preferredSupplierId; }
+    public String getPreferredSupplierName() { return preferredSupplierName; }
+    public void setPreferredSupplierName(String preferredSupplierName) { this.preferredSupplierName = preferredSupplierName; }
+    public BigDecimal getLastPurchasePrice() { return lastPurchasePrice; }
+    public void setLastPurchasePrice(BigDecimal lastPurchasePrice) { this.lastPurchasePrice = lastPurchasePrice; }
+    public BigDecimal getCurrentMarketPrice() { return currentMarketPrice; }
+    public void setCurrentMarketPrice(BigDecimal currentMarketPrice) { this.currentMarketPrice = currentMarketPrice; }
+    public LocalDateTime getPriceUpdatedAt() { return priceUpdatedAt; }
+    public void setPriceUpdatedAt(LocalDateTime priceUpdatedAt) { this.priceUpdatedAt = priceUpdatedAt; }
+    public Integer getReorderQuantity() { return reorderQuantity; }
+    public void setReorderQuantity(Integer reorderQuantity) { this.reorderQuantity = reorderQuantity; }
+    public Integer getPackSize() { return packSize; }
+    public void setPackSize(Integer packSize) { this.packSize = packSize; }
 }

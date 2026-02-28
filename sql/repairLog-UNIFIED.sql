@@ -414,6 +414,15 @@ CREATE TABLE inventory_items (
     quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity >= 0),
     in_stock BOOLEAN NOT NULL DEFAULT TRUE,
     min_stock_level INTEGER DEFAULT 0,
+
+    -- Поля для системы закупок
+    preferred_supplier_id BIGINT,
+    last_purchase_price NUMERIC(12,2),
+    current_market_price NUMERIC(12,2),
+    price_updated_at TIMESTAMP,
+    reorder_quantity INTEGER DEFAULT 0,
+    pack_size INTEGER NOT NULL DEFAULT 1,
+
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     last_modified_at TIMESTAMP,
 
@@ -428,6 +437,12 @@ CREATE TABLE inventory_items (
 
 COMMENT ON TABLE inventory_items IS 'Складские запасы (запчасти и устройства)';
 COMMENT ON COLUMN inventory_items.min_stock_level IS 'Минимальный уровень запаса для контроля критического остатка';
+COMMENT ON COLUMN inventory_items.preferred_supplier_id IS 'Предпочтительный поставщик для автозаказа';
+COMMENT ON COLUMN inventory_items.last_purchase_price IS 'Цена последней реальной закупки';
+COMMENT ON COLUMN inventory_items.current_market_price IS 'Актуальная цена из Сервиса Мониторинга';
+COMMENT ON COLUMN inventory_items.price_updated_at IS 'Когда последний раз обновлялась current_market_price';
+COMMENT ON COLUMN inventory_items.reorder_quantity IS 'Фиксированное кол-во для заказа (0 = расчёт по среднему расходу)';
+COMMENT ON COLUMN inventory_items.pack_size IS 'Кол-во штук в упаковке поставщика (1 = поштучная продажа)';
 
 CREATE TABLE inventory_movements (
     id BIGSERIAL PRIMARY KEY,
@@ -510,11 +525,34 @@ CREATE TABLE suppliers (
     address TEXT,
     inn VARCHAR(12),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    -- Интеграция с Сервисом Мониторинга
+    integration_type VARCHAR(20) NOT NULL DEFAULT 'MANUAL',
+    price_source VARCHAR(20) NOT NULL DEFAULT 'MANUAL',
+    order_method VARCHAR(20) NOT NULL DEFAULT 'PHONE',
+    website_url VARCHAR(500),
+    contact_messenger VARCHAR(200),
+    price_list_email VARCHAR(100),
+    external_supplier_id VARCHAR(100),
+
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    last_modified_at TIMESTAMP
+    last_modified_at TIMESTAMP,
+
+    CHECK (integration_type IN ('FULL_AUTO', 'PRICE_ONLY', 'MANUAL')),
+    CHECK (price_source IN ('API', 'WEBSITE', 'EMAIL', 'MANUAL')),
+    CHECK (order_method IN ('API', 'WEBSITE', 'EMAIL', 'MESSENGER', 'PHONE'))
 );
 
 COMMENT ON TABLE suppliers IS 'Поставщики запчастей';
+COMMENT ON COLUMN suppliers.integration_type IS 'Уровень автоматизации: FULL_AUTO, PRICE_ONLY, MANUAL';
+COMMENT ON COLUMN suppliers.price_source IS 'Источник цен: API, WEBSITE, EMAIL, MANUAL';
+COMMENT ON COLUMN suppliers.order_method IS 'Способ заказа: API, WEBSITE, EMAIL, MESSENGER, PHONE';
+COMMENT ON COLUMN suppliers.external_supplier_id IS 'ID поставщика в Сервисе Мониторинга';
+
+-- Добавляем FK от inventory_items к suppliers (таблица suppliers создана после inventory_items)
+ALTER TABLE inventory_items
+    ADD CONSTRAINT fk_inventory_preferred_supplier
+    FOREIGN KEY (preferred_supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL;
 
 CREATE TABLE supplier_contracts (
     id BIGSERIAL PRIMARY KEY,
@@ -537,7 +575,7 @@ COMMENT ON TABLE supplier_contracts IS 'Договоры с поставщика
 CREATE TABLE supply_requests (
     id BIGSERIAL PRIMARY KEY,
     request_number VARCHAR(30) UNIQUE,
-    supplier_id BIGINT NOT NULL,
+    supplier_id BIGINT,
     contract_id BIGINT,
     requested_by BIGINT NOT NULL,
     approved_by BIGINT,
@@ -546,6 +584,12 @@ CREATE TABLE supply_requests (
     total_amount NUMERIC(12,2),
     comment TEXT,
     expected_delivery_date TIMESTAMP,
+
+    -- Поля для системы закупок
+    source VARCHAR(20) NOT NULL DEFAULT 'MANUAL',
+    external_order_id VARCHAR(100),
+    external_order_status VARCHAR(50),
+
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     last_modified_at TIMESTAMP,
 
@@ -554,10 +598,15 @@ CREATE TABLE supply_requests (
     FOREIGN KEY (requested_by) REFERENCES employees(id),
     FOREIGN KEY (approved_by) REFERENCES employees(id),
     FOREIGN KEY (related_repair_order) REFERENCES repair_orders(id),
-    FOREIGN KEY (status_id) REFERENCES supply_request_statuses(id)
+    FOREIGN KEY (status_id) REFERENCES supply_request_statuses(id),
+
+    CHECK (source IN ('MANUAL', 'TECHNICIAN', 'AUTO_REORDER'))
 );
 
 COMMENT ON TABLE supply_requests IS 'Запросы на поставку запчастей';
+COMMENT ON COLUMN supply_requests.source IS 'Источник заявки: MANUAL, TECHNICIAN, AUTO_REORDER';
+COMMENT ON COLUMN supply_requests.external_order_id IS 'Номер заказа у поставщика (из Сервиса Мониторинга)';
+COMMENT ON COLUMN supply_requests.external_order_status IS 'Статус заказа у поставщика';
 
 CREATE TABLE supply_request_items (
     id BIGSERIAL PRIMARY KEY,
@@ -574,6 +623,26 @@ CREATE TABLE supply_request_items (
 );
 
 COMMENT ON TABLE supply_request_items IS 'Позиции в запросах на поставку';
+
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- НАСТРОЙКИ СИСТЕМЫ ЗАКУПОК
+-- ════════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE supply_settings (
+    id BIGSERIAL PRIMARY KEY,
+    setting_key VARCHAR(100) NOT NULL UNIQUE,
+    setting_value VARCHAR(500) NOT NULL,
+    description TEXT,
+    last_modified_at TIMESTAMP,
+    modified_by BIGINT,
+
+    FOREIGN KEY (modified_by) REFERENCES employees(id)
+);
+
+COMMENT ON TABLE supply_settings IS 'Настройки системы автоматических закупок';
+COMMENT ON COLUMN supply_settings.setting_key IS 'Уникальный ключ настройки';
+COMMENT ON COLUMN supply_settings.setting_value IS 'Значение настройки';
 
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -1178,15 +1247,16 @@ INSERT INTO repair_statuses (name) VALUES
 ('Гарантийный случай')
 ON CONFLICT (name) DO NOTHING;
 
--- Вставка статусов поставок
-INSERT INTO supply_request_statuses (name) VALUES 
-('Новая'),
-('Подтверждена'),
-('Заказана'),
-('В пути'),
-('Получена'),
-('Частично получена'),
-('Отменена')
+-- Вставка статусов поставок (английские — локализация на фронтенде)
+INSERT INTO supply_request_statuses (name) VALUES
+('NEW'),
+('AUTO_FORMED'),
+('APPROVED'),
+('ORDERED'),
+('IN_TRANSIT'),
+('DELIVERED'),
+('PARTIALLY_DELIVERED'),
+('CANCELLED')
 ON CONFLICT (name) DO NOTHING;
 
 -- Вставка степеней износа
@@ -1221,6 +1291,19 @@ INSERT INTO device_types (name) VALUES
 ('Телевизор'),
 ('Игровая консоль')
 ON CONFLICT (name) DO NOTHING;
+
+-- Вставка начальных настроек системы закупок
+INSERT INTO supply_settings (setting_key, setting_value, description) VALUES
+('auto_reorder_enabled', 'false', 'Генерировать ли авто-заявки при низком остатке'),
+('auto_approve_enabled', 'false', 'Подтверждать ли мелкие заявки автоматически'),
+('auto_approve_max_amount', '5000.00', 'Порог суммы для авто-подтверждения (руб.)'),
+('reorder_check_cron', '0 0 8 * * MON-SAT', 'Расписание проверки остатков (cron)'),
+('consolidation_enabled', 'false', 'Объединять ли заявки к одному поставщику'),
+('default_reorder_multiplier', '1.5', 'Множитель к среднему расходу при расчёте объёма закупки'),
+('days_for_consumption_avg', '30', 'Период для расчёта среднего расхода (дней)'),
+('price_update_cron', '0 0 6 * * MON-SAT', 'Расписание обновления цен (cron)'),
+('monitoring_service_url', 'http://monitoring-service:8081', 'URL Сервиса Мониторинга')
+ON CONFLICT (setting_key) DO NOTHING;
 
 -- Создание первого администратора
 -- ВАЖНО: Этот пароль необходимо изменить при первом входе!

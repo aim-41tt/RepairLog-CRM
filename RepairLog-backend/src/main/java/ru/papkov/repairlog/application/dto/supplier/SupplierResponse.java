@@ -18,6 +18,13 @@ public class SupplierResponse {
     private String inn;
     private Boolean active;
     private LocalDateTime createdAt;
+    private String integrationType;
+    private String priceSource;
+    private String orderMethod;
+    private String websiteUrl;
+    private String contactMessenger;
+    private String priceListEmail;
+    private String externalSupplierId;
 
     public SupplierResponse() {}
 
@@ -39,4 +46,18 @@ public class SupplierResponse {
     public void setActive(Boolean active) { this.active = active; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public String getIntegrationType() { return integrationType; }
+    public void setIntegrationType(String integrationType) { this.integrationType = integrationType; }
+    public String getPriceSource() { return priceSource; }
+    public void setPriceSource(String priceSource) { this.priceSource = priceSource; }
+    public String getOrderMethod() { return orderMethod; }
+    public void setOrderMethod(String orderMethod) { this.orderMethod = orderMethod; }
+    public String getWebsiteUrl() { return websiteUrl; }
+    public void setWebsiteUrl(String websiteUrl) { this.websiteUrl = websiteUrl; }
+    public String getContactMessenger() { return contactMessenger; }
+    public void setContactMessenger(String contactMessenger) { this.contactMessenger = contactMessenger; }
+    public String getPriceListEmail() { return priceListEmail; }
+    public void setPriceListEmail(String priceListEmail) { this.priceListEmail = priceListEmail; }
+    public String getExternalSupplierId() { return externalSupplierId; }
+    public void setExternalSupplierId(String externalSupplierId) { this.externalSupplierId = externalSupplierId; }
 }

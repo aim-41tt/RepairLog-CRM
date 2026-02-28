@@ -6,6 +6,9 @@ import ru.papkov.repairlog.application.dto.supplier.CreateSupplierRequest;
 import ru.papkov.repairlog.application.dto.supplier.SupplierResponse;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.Supplier;
+import ru.papkov.repairlog.domain.model.enums.IntegrationType;
+import ru.papkov.repairlog.domain.model.enums.OrderMethod;
+import ru.papkov.repairlog.domain.model.enums.PriceSource;
 import ru.papkov.repairlog.domain.repository.SupplierRepository;
 
 import java.util.List;
@@ -55,15 +58,29 @@ public class SupplierService {
      * @param request данные для создания
      * @return созданный поставщик
      */
+    /**
+     * Получить активных поставщиков.
+     */
+    public List<SupplierResponse> getActive() {
+        return supplierRepository.findByActiveTrue().stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Получить поставщиков по типу интеграции.
+     */
+    public List<SupplierResponse> getByIntegrationType(String type) {
+        IntegrationType integrationType = IntegrationType.valueOf(type);
+        return supplierRepository.findByIntegrationType(integrationType).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public SupplierResponse create(CreateSupplierRequest request) {
         Supplier supplier = new Supplier();
-        supplier.setName(request.getName());
-        supplier.setContactPerson(request.getContactPerson());
-        supplier.setPhone(request.getPhone());
-        supplier.setEmail(request.getEmail());
-        supplier.setAddress(request.getAddress());
-        supplier.setInn(request.getInn());
+        mapRequestToEntity(request, supplier);
         supplier.setActive(true);
 
         return toResponse(supplierRepository.save(supplier));
@@ -79,12 +96,7 @@ public class SupplierService {
     @Transactional
     public SupplierResponse update(Long id, CreateSupplierRequest request) {
         Supplier supplier = findById(id);
-        supplier.setName(request.getName());
-        supplier.setContactPerson(request.getContactPerson());
-        supplier.setPhone(request.getPhone());
-        supplier.setEmail(request.getEmail());
-        supplier.setAddress(request.getAddress());
-        supplier.setInn(request.getInn());
+        mapRequestToEntity(request, supplier);
 
         return toResponse(supplierRepository.save(supplier));
     }
@@ -109,6 +121,28 @@ public class SupplierService {
                 .orElseThrow(() -> new EntityNotFoundException("Поставщик не найден: " + id));
     }
 
+    private void mapRequestToEntity(CreateSupplierRequest request, Supplier supplier) {
+        supplier.setName(request.getName());
+        supplier.setContactPerson(request.getContactPerson());
+        supplier.setPhone(request.getPhone());
+        supplier.setEmail(request.getEmail());
+        supplier.setAddress(request.getAddress());
+        supplier.setInn(request.getInn());
+        if (request.getIntegrationType() != null) {
+            supplier.setIntegrationType(IntegrationType.valueOf(request.getIntegrationType()));
+        }
+        if (request.getPriceSource() != null) {
+            supplier.setPriceSource(PriceSource.valueOf(request.getPriceSource()));
+        }
+        if (request.getOrderMethod() != null) {
+            supplier.setOrderMethod(OrderMethod.valueOf(request.getOrderMethod()));
+        }
+        supplier.setWebsiteUrl(request.getWebsiteUrl());
+        supplier.setContactMessenger(request.getContactMessenger());
+        supplier.setPriceListEmail(request.getPriceListEmail());
+        supplier.setExternalSupplierId(request.getExternalSupplierId());
+    }
+
     private SupplierResponse toResponse(Supplier s) {
         SupplierResponse r = new SupplierResponse();
         r.setId(s.getId());
@@ -120,6 +154,13 @@ public class SupplierService {
         r.setInn(s.getInn());
         r.setActive(s.getActive());
         r.setCreatedAt(s.getCreatedAt());
+        r.setIntegrationType(s.getIntegrationType() != null ? s.getIntegrationType().name() : null);
+        r.setPriceSource(s.getPriceSource() != null ? s.getPriceSource().name() : null);
+        r.setOrderMethod(s.getOrderMethod() != null ? s.getOrderMethod().name() : null);
+        r.setWebsiteUrl(s.getWebsiteUrl());
+        r.setContactMessenger(s.getContactMessenger());
+        r.setPriceListEmail(s.getPriceListEmail());
+        r.setExternalSupplierId(s.getExternalSupplierId());
         return r;
     }
 }
