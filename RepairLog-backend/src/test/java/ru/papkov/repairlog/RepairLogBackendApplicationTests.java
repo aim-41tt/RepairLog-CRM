@@ -1,13 +1,17 @@
 package ru.papkov.repairlog;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class RepairLogBackendApplicationTests {
+/**
+ * Smoke-тест: проверяет успешную загрузку Spring-контекста
+ * с реальными PostgreSQL и Redis через Testcontainers.
+ */
+class RepairLogBackendApplicationTests extends AbstractIntegrationTest {
 
-	@Test
-	void contextLoads() {
-	}
-
+    @Test
+    @DisplayName("Spring-контекст загружается успешно с Testcontainers")
+    void contextLoads() {
+        // Контекст загружен — PostgreSQL и Redis подключены
+    }
 }
