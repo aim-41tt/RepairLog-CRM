@@ -1,5 +1,7 @@
 package ru.papkov.repairlog.application.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.papkov.repairlog.application.dto.supplier.CreateSupplierRequest;
@@ -39,6 +41,13 @@ public class SupplierService {
         return supplierRepository.findAll().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Получить список поставщиков с пагинацией.
+     */
+    public Page<SupplierResponse> getAll(Pageable pageable) {
+        return supplierRepository.findAll(pageable).map(this::toResponse);
     }
 
     /**

@@ -7,6 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -74,8 +76,9 @@ public class AdminController {
 
     @GetMapping("/employees")
     @Operation(summary = "Список всех сотрудников")
-    public ResponseEntity<List<EmployeeResponse>> getAllEmployees() {
-        return ResponseEntity.ok(employeeService.getAllEmployees());
+    public ResponseEntity<Page<EmployeeResponse>> getAllEmployees(
+            @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+        return ResponseEntity.ok(employeeService.getAllEmployees(pageable));
     }
 
     @GetMapping("/employees/{id}")
@@ -93,7 +96,7 @@ public class AdminController {
     @PostMapping("/employees")
     @Operation(summary = "Создать сотрудника")
     public ResponseEntity<EmployeeResponse> createEmployee(@Valid @RequestBody CreateEmployeeRequest request) {
-        return ResponseEntity.ok(employeeService.create(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(employeeService.create(request));
     }
 
     @PutMapping("/employees/{id}")
@@ -130,8 +133,9 @@ public class AdminController {
 
     @GetMapping("/inventory")
     @Operation(summary = "Полный список складских позиций")
-    public ResponseEntity<List<InventoryItemResponse>> getAllInventory() {
-        return ResponseEntity.ok(inventoryService.getAll());
+    public ResponseEntity<Page<InventoryItemResponse>> getAllInventory(
+            @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+        return ResponseEntity.ok(inventoryService.getAll(pageable));
     }
 
     @GetMapping("/inventory/low-stock")
@@ -155,8 +159,9 @@ public class AdminController {
 
     @GetMapping("/suppliers")
     @Operation(summary = "Список всех поставщиков")
-    public ResponseEntity<List<SupplierResponse>> getAllSuppliers() {
-        return ResponseEntity.ok(supplierService.getAll());
+    public ResponseEntity<Page<SupplierResponse>> getAllSuppliers(
+            @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+        return ResponseEntity.ok(supplierService.getAll(pageable));
     }
 
     @GetMapping("/suppliers/{id}")
@@ -168,7 +173,7 @@ public class AdminController {
     @PostMapping("/suppliers")
     @Operation(summary = "Создать поставщика")
     public ResponseEntity<SupplierResponse> createSupplier(@Valid @RequestBody CreateSupplierRequest request) {
-        return ResponseEntity.ok(supplierService.create(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(supplierService.create(request));
     }
 
     @PutMapping("/suppliers/{id}")
@@ -202,8 +207,9 @@ public class AdminController {
 
     @GetMapping("/supply-requests")
     @Operation(summary = "Все заявки на поставку")
-    public ResponseEntity<List<SupplyRequestResponse>> getAllSupplyRequests() {
-        return ResponseEntity.ok(supplyRequestService.getAll());
+    public ResponseEntity<Page<SupplyRequestResponse>> getAllSupplyRequests(
+            @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+        return ResponseEntity.ok(supplyRequestService.getAll(pageable));
     }
 
     @GetMapping("/supply-requests/status/{statusName}")
@@ -223,7 +229,7 @@ public class AdminController {
     public ResponseEntity<SupplyRequestResponse> createSupplyRequest(
             @Valid @RequestBody CreateSupplyRequestRequest request,
             @AuthenticationPrincipal UserDetails user) {
-        return ResponseEntity.ok(supplyRequestService.create(request, user.getUsername()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(supplyRequestService.create(request, user.getUsername()));
     }
 
     @PostMapping("/supply-requests/{id}/approve")
