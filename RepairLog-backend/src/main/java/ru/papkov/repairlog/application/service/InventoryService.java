@@ -1,5 +1,7 @@
 package ru.papkov.repairlog.application.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.papkov.repairlog.application.dto.inventory.InventoryItemResponse;
@@ -7,6 +9,11 @@ import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.*;
 import ru.papkov.repairlog.domain.repository.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.papkov.repairlog.application.dto.monitoring.PriceUpdateWebhookRequest;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -18,6 +25,8 @@ import java.util.stream.Collectors;
  */
 @Service
 public class InventoryService {
+
+    private static final Logger log = LoggerFactory.getLogger(InventoryService.class);
 
     private final InventoryItemRepository inventoryItemRepository;
     private final InventoryMovementRepository inventoryMovementRepository;
@@ -38,6 +47,11 @@ public class InventoryService {
     public List<InventoryItemResponse> getAll() {
         return inventoryItemRepository.findByInStockTrue().stream()
                 .map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<InventoryItemResponse> getAll(Pageable pageable) {
+        return inventoryItemRepository.findAll(pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -93,6 +107,29 @@ public class InventoryService {
                 item, InventoryMovement.MovementType.ПРИХОД, quantity,
                 null, null, employee, comment);
         inventoryMovementRepository.save(movement);
+    }
+
+    /**
+     * Обновление рыночных цен по данным из вебхука Сервиса Мониторинга.
+     * Выполняется в единой транзакции — при ошибке откатываются все изменения.
+     *
+     * @param items список позиций с новыми ценами
+     * @return количество обновлённых записей
+     */
+    @Transactional
+    public int updatePricesFromWebhook(List<PriceUpdateWebhookRequest.PriceItem> items) {
+        int updated = 0;
+        for (PriceUpdateWebhookRequest.PriceItem priceItem : items) {
+            var inventoryItems = inventoryItemRepository.findByNameContainingIgnoreCase(priceItem.getItemName());
+            for (InventoryItem item : inventoryItems) {
+                item.setCurrentMarketPrice(priceItem.getPrice());
+                item.setPriceUpdatedAt(LocalDateTime.now());
+                inventoryItemRepository.save(item);
+                updated++;
+            }
+        }
+        log.info("Обновлено {} позиций по ценам из вебхука", updated);
+        return updated;
     }
 
     // ========== Helpers ==========
