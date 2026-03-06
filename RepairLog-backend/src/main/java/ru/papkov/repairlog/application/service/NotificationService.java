@@ -82,6 +82,44 @@ public class NotificationService {
         log.info("Уведомление {} отмечено как отправленное", notificationId);
     }
 
+    /**
+     * Обработка и отправка ожидающих уведомлений.
+     * Заглушка: фактическая интеграция с SMS/Email/Push — отдельная задача.
+     * Обрабатывает retry-логику (максимум 3 попытки).
+     */
+    @Transactional
+    public void sendPending() {
+        List<Notification> pending = notificationRepository.findByStatus(Notification.NotificationStatus.PENDING);
+        if (pending.isEmpty()) {
+            return;
+        }
+        log.info("Обработка {} ожидающих уведомлений", pending.size());
+
+        for (Notification n : pending) {
+            try {
+                // TODO: интеграция с SMS/Email/Push провайдером
+                log.info("Отправка {} уведомления клиенту id={}: {}",
+                        n.getNotificationType(),
+                        n.getClient() != null ? n.getClient().getId() : "N/A",
+                        n.getMessage());
+
+                n.setStatus(Notification.NotificationStatus.SENT);
+                n.setSentAt(LocalDateTime.now());
+                notificationRepository.save(n);
+            } catch (Exception e) {
+                log.error("Ошибка отправки уведомления {}: {}", n.getId(), e.getMessage());
+                n.setRetryCount(n.getRetryCount() != null ? n.getRetryCount() + 1 : 1);
+                n.setLastAttempt(LocalDateTime.now());
+                n.setErrorMessage(e.getMessage());
+                if (n.getRetryCount() >= 3) {
+                    n.setStatus(Notification.NotificationStatus.FAILED);
+                    log.warn("Уведомление {} помечено как FAILED после {} попыток", n.getId(), n.getRetryCount());
+                }
+                notificationRepository.save(n);
+            }
+        }
+    }
+
     // ========== Вспомогательные методы ==========
 
     private NotificationResponse toResponse(Notification n) {

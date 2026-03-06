@@ -63,7 +63,9 @@ public class ReferenceDataController {
     @GetMapping("/brands/{brandId}/models")
     @Operation(summary = "Модели по бренду")
     public ResponseEntity<List<Map<String, Object>>> getModelsByBrand(@PathVariable Long brandId) {
-        Brand brand = brandRepository.findById(brandId).orElseThrow();
+        Brand brand = brandRepository.findById(brandId)
+                .orElseThrow(() -> new ru.papkov.repairlog.domain.exception.EntityNotFoundException(
+                        "Бренд с id=" + brandId + " не найден"));
         return ResponseEntity.ok(modelRepository.findByBrand(brand).stream()
                 .map(m -> Map.<String, Object>of("id", m.getId(), "name", m.getName()))
                 .collect(Collectors.toList()));

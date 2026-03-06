@@ -67,7 +67,9 @@ public class TechnicianController {
     @GetMapping("/orders/my")
     @Operation(summary = "Мои текущие заказы")
     public ResponseEntity<List<RepairOrderResponse>> getMyOrders(@AuthenticationPrincipal UserDetails user) {
-        var employee = employeeRepository.findByLogin(user.getUsername()).orElseThrow();
+        var employee = employeeRepository.findByLogin(user.getUsername())
+                .orElseThrow(() -> new ru.papkov.repairlog.domain.exception.EntityNotFoundException(
+                        "Сотрудник с логином " + user.getUsername() + " не найден"));
         return ResponseEntity.ok(repairOrderService.getByMaster(employee.getId()));
     }
 
@@ -80,7 +82,9 @@ public class TechnicianController {
     @PostMapping("/orders/{id}/take")
     @Operation(summary = "Взять заказ в работу")
     public ResponseEntity<RepairOrderResponse> takeOrder(@PathVariable Long id, @AuthenticationPrincipal UserDetails user) {
-        var employee = employeeRepository.findByLogin(user.getUsername()).orElseThrow();
+        var employee = employeeRepository.findByLogin(user.getUsername())
+                .orElseThrow(() -> new ru.papkov.repairlog.domain.exception.EntityNotFoundException(
+                        "Сотрудник с логином " + user.getUsername() + " не найден"));
         return ResponseEntity.ok(repairOrderService.assignMaster(id, employee.getId()));
     }
 
