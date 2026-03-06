@@ -98,8 +98,8 @@ public class RepairOrderService {
                 .orElseThrow(() -> new EntityNotFoundException("Устройство не найдено"));
         Employee acceptedBy = employeeRepository.findByLogin(acceptedByLogin)
                 .orElseThrow(() -> new EntityNotFoundException("Сотрудник не найден"));
-        RepairStatus newStatus = repairStatusRepository.findByName("Новая")
-                .orElseThrow(() -> new EntityNotFoundException("Статус 'Новая' не найден"));
+        RepairStatus newStatus = repairStatusRepository.findByCode("NEW")
+                .orElseThrow(() -> new EntityNotFoundException("Статус 'NEW' не найден"));
 
         RepairOrder order = new RepairOrder();
         order.setClient(client);
@@ -141,8 +141,8 @@ public class RepairOrderService {
         order.assignMaster(master);
 
         // переводим в статус "Принята"
-        RepairStatus accepted = repairStatusRepository.findByName("Принята")
-                .orElseThrow(() -> new EntityNotFoundException("Статус 'Принята' не найден"));
+        RepairStatus accepted = repairStatusRepository.findByCode("ACCEPTED")
+                .orElseThrow(() -> new EntityNotFoundException("Статус 'ACCEPTED' не найден"));
         order.setCurrentStatus(accepted);
 
         RepairOrder saved = repairOrderRepository.save(order);
@@ -164,8 +164,8 @@ public class RepairOrderService {
 
         order.setCurrentStatus(newStatus);
 
-        // автоматически проставляем дату завершения
-        if ("Выдан".equals(newStatus.getName()) || "Ремонт завершен".equals(newStatus.getName())) {
+        // автоматически проставляем дату завершения для финальных статусов
+        if (Boolean.TRUE.equals(newStatus.getIsFinal())) {
             order.complete();
         }
 

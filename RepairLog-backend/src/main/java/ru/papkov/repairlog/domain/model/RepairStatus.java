@@ -18,10 +18,22 @@ public class RepairStatus {
 	private Long id;
 
 	/**
-	 * Название статуса ремонта.
+	 * Название статуса ремонта (для отображения пользователю).
 	 */
 	@Column(name = "name", nullable = false, unique = true, length = 50)
 	private String name;
+
+	/**
+	 * Машинный код статуса (NEW, ACCEPTED, ISSUED и т.д.).
+	 */
+	@Column(name = "code", nullable = false, unique = true, length = 30)
+	private String code;
+
+	/**
+	 * Является ли статус финальным (заказ считается завершённым).
+	 */
+	@Column(name = "is_final", nullable = false)
+	private Boolean isFinal = false;
 
 	/**
 	 * @return the id
@@ -51,8 +63,36 @@ public class RepairStatus {
 		this.name = name;
 	}
 
+	/**
+	 * @return the code
+	 */
+	public String getCode() {
+		return code;
+	}
+
+	/**
+	 * @param code the code to set
+	 */
+	public void setCode(String code) {
+		this.code = code;
+	}
+
+	/**
+	 * @return the isFinal
+	 */
+	public Boolean getIsFinal() {
+		return isFinal;
+	}
+
+	/**
+	 * @param isFinal the isFinal to set
+	 */
+	public void setIsFinal(Boolean isFinal) {
+		this.isFinal = isFinal;
+	}
+
 	@Override
 	public String toString() {
-		return "RepairStatus{id=" + id + ", name='" + name + "'}";
+		return "RepairStatus{id=" + id + ", name='" + name + "', code='" + code + "', isFinal=" + isFinal + "'}";
 	}
 }

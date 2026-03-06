@@ -15,6 +15,8 @@ import java.util.Optional;
 public interface RepairStatusRepository extends JpaRepository<RepairStatus, Long> {
 
     Optional<RepairStatus> findByName(String name);
-    
+
+    Optional<RepairStatus> findByCode(String code);
+
     boolean existsByName(String name);
 }

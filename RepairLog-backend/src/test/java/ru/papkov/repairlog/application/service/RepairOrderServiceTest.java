@@ -80,10 +80,14 @@ class RepairOrderServiceTest {
         statusNew = new RepairStatus();
         statusNew.setId(1L);
         statusNew.setName("Новая");
+        statusNew.setCode("NEW");
+        statusNew.setIsFinal(false);
 
         statusAccepted = new RepairStatus();
         statusAccepted.setId(2L);
         statusAccepted.setName("Принята");
+        statusAccepted.setCode("ACCEPTED");
+        statusAccepted.setIsFinal(false);
 
         testOrder = new RepairOrder();
         testOrder.setId(1L);
@@ -198,7 +202,7 @@ class RepairOrderServiceTest {
         when(clientRepository.findById(1L)).thenReturn(Optional.of(testClient));
         when(deviceRepository.findById(1L)).thenReturn(Optional.of(testDevice));
         when(employeeRepository.findByLogin("receptionist1")).thenReturn(Optional.of(testReceptionist));
-        when(repairStatusRepository.findByName("Новая")).thenReturn(Optional.of(statusNew));
+        when(repairStatusRepository.findByCode("NEW")).thenReturn(Optional.of(statusNew));
         when(repairOrderRepository.save(any(RepairOrder.class))).thenAnswer(inv -> {
             RepairOrder o = inv.getArgument(0);
             o.setId(1L);
@@ -240,7 +244,7 @@ class RepairOrderServiceTest {
         when(clientRepository.findById(1L)).thenReturn(Optional.of(testClient));
         when(deviceRepository.findById(1L)).thenReturn(Optional.of(testDevice));
         when(employeeRepository.findByLogin("receptionist1")).thenReturn(Optional.of(testReceptionist));
-        when(repairStatusRepository.findByName("Новая")).thenReturn(Optional.of(statusNew));
+        when(repairStatusRepository.findByCode("NEW")).thenReturn(Optional.of(statusNew));
         when(repairPriorityRepository.findById(1L)).thenReturn(Optional.of(priority));
         when(repairOrderRepository.save(any(RepairOrder.class))).thenAnswer(inv -> {
             RepairOrder o = inv.getArgument(0);
@@ -260,7 +264,7 @@ class RepairOrderServiceTest {
     void assignMaster_success() {
         when(repairOrderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
         when(employeeRepository.findById(2L)).thenReturn(Optional.of(testTechnician));
-        when(repairStatusRepository.findByName("Принята")).thenReturn(Optional.of(statusAccepted));
+        when(repairStatusRepository.findByCode("ACCEPTED")).thenReturn(Optional.of(statusAccepted));
         when(repairOrderRepository.save(any(RepairOrder.class))).thenReturn(testOrder);
         when(receiptRepository.findByRepairOrder(any())).thenReturn(Optional.empty());
 
@@ -293,6 +297,8 @@ class RepairOrderServiceTest {
         RepairStatus inRepairStatus = new RepairStatus();
         inRepairStatus.setId(3L);
         inRepairStatus.setName("В ремонте");
+        inRepairStatus.setCode("IN_REPAIR");
+        inRepairStatus.setIsFinal(false);
 
         ChangeStatusRequest request = new ChangeStatusRequest();
         request.setStatusId(3L);
@@ -311,11 +317,13 @@ class RepairOrderServiceTest {
     }
 
     @Test
-    @DisplayName("changeStatus - статус 'Выдан' автоматически завершает заказ")
+    @DisplayName("changeStatus - финальный статус 'Выдан' автоматически завершает заказ")
     void changeStatus_completesOnIssued() {
         RepairStatus issuedStatus = new RepairStatus();
         issuedStatus.setId(5L);
         issuedStatus.setName("Выдан");
+        issuedStatus.setCode("ISSUED");
+        issuedStatus.setIsFinal(true);
 
         ChangeStatusRequest request = new ChangeStatusRequest();
         request.setStatusId(5L);
@@ -332,11 +340,13 @@ class RepairOrderServiceTest {
     }
 
     @Test
-    @DisplayName("changeStatus - статус 'Ремонт завершен' автоматически завершает заказ")
-    void changeStatus_completesOnRepairDone() {
+    @DisplayName("changeStatus - статус 'Отменен' (финальный) автоматически завершает заказ")
+    void changeStatus_completesOnCancelled() {
         RepairStatus doneStatus = new RepairStatus();
         doneStatus.setId(6L);
-        doneStatus.setName("Ремонт завершен");
+        doneStatus.setName("Отменен");
+        doneStatus.setCode("CANCELLED");
+        doneStatus.setIsFinal(true);
 
         ChangeStatusRequest request = new ChangeStatusRequest();
         request.setStatusId(6L);
