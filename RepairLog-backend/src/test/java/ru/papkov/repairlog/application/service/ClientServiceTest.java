@@ -12,7 +12,13 @@ import ru.papkov.repairlog.application.dto.client.CreateClientRequest;
 import ru.papkov.repairlog.domain.exception.BusinessLogicException;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.Client;
+import ru.papkov.repairlog.domain.model.Device;
+import ru.papkov.repairlog.domain.model.Notification;
+import ru.papkov.repairlog.domain.model.RepairOrder;
 import ru.papkov.repairlog.domain.repository.ClientRepository;
+import ru.papkov.repairlog.domain.repository.DeviceRepository;
+import ru.papkov.repairlog.domain.repository.NotificationRepository;
+import ru.papkov.repairlog.domain.repository.RepairOrderRepository;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -27,6 +33,15 @@ class ClientServiceTest {
 
     @Mock
     private ClientRepository clientRepository;
+
+    @Mock
+    private DeviceRepository deviceRepository;
+
+    @Mock
+    private RepairOrderRepository repairOrderRepository;
+
+    @Mock
+    private NotificationRepository notificationRepository;
 
     @InjectMocks
     private ClientService clientService;
@@ -219,7 +234,7 @@ class ClientServiceTest {
     }
 
     @Test
-    @DisplayName("revokeConsent - отзыв согласия на обработку ПДн")
+    @DisplayName("revokeConsent - отзыв согласия и установка 30-дневного срока уничтожения (152-ФЗ)")
     void revokeConsent_success() {
         testClient.giveConsent();
         when(clientRepository.findById(1L)).thenReturn(Optional.of(testClient));
@@ -228,6 +243,8 @@ class ClientServiceTest {
         clientService.revokeConsent(1L);
 
         assertThat(testClient.getConsentGiven()).isFalse();
+        // 152-ФЗ ст. 21: 30 дней на уничтожение после отзыва согласия
+        assertThat(testClient.getDataRetentionUntil()).isEqualTo(LocalDate.now().plusDays(30));
         verify(clientRepository).save(testClient);
     }
 
@@ -238,5 +255,90 @@ class ClientServiceTest {
 
         assertThatThrownBy(() -> clientService.giveConsent(99L))
                 .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    // ========== Тесты анонимизации (152-ФЗ) ==========
+
+    @Test
+    @DisplayName("anonymizeClient - анонимизация клиента и всех связанных сущностей")
+    void anonymizeClient_success() {
+        testClient.setId(42L);
+        testClient.giveConsent();
+        testClient.setDataRetentionUntil(LocalDate.now().minusDays(1));
+
+        Device device = new Device();
+        device.setId(1L);
+        device.setSerialNumber("SN-12345");
+
+        RepairOrder order = new RepairOrder();
+        order.setId(1L);
+        order.setClientComplaint("Не работает экран, звонить +79001234567");
+
+        Notification notification = new Notification();
+        notification.setId(1L);
+        notification.setMessage("Уважаемый Петров И.С., ваш заказ готов");
+        notification.setNotificationType(Notification.NotificationType.SMS);
+        notification.setClient(testClient);
+
+        when(deviceRepository.findByClient(testClient)).thenReturn(List.of(device));
+        when(repairOrderRepository.findByClient(testClient)).thenReturn(List.of(order));
+        when(notificationRepository.findByClient(testClient)).thenReturn(List.of(notification));
+
+        clientService.anonymizeClient(testClient);
+
+        // Проверка анонимизации клиента
+        assertThat(testClient.getName()).isEqualTo("Удалён");
+        assertThat(testClient.getSurname()).isEqualTo("Удалён");
+        assertThat(testClient.getPatronymic()).isNull();
+        assertThat(testClient.getDateBirth()).isEqualTo(LocalDate.of(1900, 1, 1));
+        assertThat(testClient.getPhone()).isEqualTo("000000042");
+        assertThat(testClient.getEmail()).isNull();
+        assertThat(testClient.getConsentGiven()).isFalse();
+        assertThat(testClient.getConsentDate()).isNull();
+        assertThat(testClient.getDataRetentionUntil()).isNull();
+
+        // Проверка анонимизации связанных сущностей
+        assertThat(device.getSerialNumber()).isEqualTo("ANON-1");
+        assertThat(order.getClientComplaint()).isEqualTo("[Данные удалены по 152-ФЗ]");
+        assertThat(notification.getMessage()).isEqualTo("[Данные удалены по 152-ФЗ]");
+
+        verify(clientRepository).save(testClient);
+        verify(deviceRepository).save(device);
+        verify(repairOrderRepository).save(order);
+        verify(notificationRepository).save(notification);
+    }
+
+    @Test
+    @DisplayName("anonymizeClient - устройство без серийного номера не трогается")
+    void anonymizeClient_deviceWithoutSerialNumber() {
+        testClient.setId(10L);
+
+        Device device = new Device();
+        device.setId(2L);
+        device.setSerialNumber(null);
+
+        when(deviceRepository.findByClient(testClient)).thenReturn(List.of(device));
+        when(repairOrderRepository.findByClient(testClient)).thenReturn(List.of());
+        when(notificationRepository.findByClient(testClient)).thenReturn(List.of());
+
+        clientService.anonymizeClient(testClient);
+
+        assertThat(device.getSerialNumber()).isNull();
+        verify(deviceRepository).save(device);
+    }
+
+    @Test
+    @DisplayName("isAnonymized - возвращает true для анонимизированного клиента")
+    void isAnonymized_returnsTrue() {
+        testClient.setName("Удалён");
+        testClient.setSurname("Удалён");
+
+        assertThat(clientService.isAnonymized(testClient)).isTrue();
+    }
+
+    @Test
+    @DisplayName("isAnonymized - возвращает false для обычного клиента")
+    void isAnonymized_returnsFalse() {
+        assertThat(clientService.isAnonymized(testClient)).isFalse();
     }
 }

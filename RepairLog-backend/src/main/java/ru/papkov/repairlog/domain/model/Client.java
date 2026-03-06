@@ -115,6 +115,29 @@ public class Client extends BaseEntity {
 	}
 
 	/**
+	 * Анонимизировать персональные данные клиента (152-ФЗ).
+	 * После вызова все ПДн заменяются на нейтральные значения.
+	 * Телефон устанавливается отдельно (нужен уникальный ID).
+	 */
+	public void anonymize() {
+		this.name = "Удалён";
+		this.surname = "Удалён";
+		this.patronymic = null;
+		this.dateBirth = LocalDate.of(1900, 1, 1);
+		this.email = null;
+		this.consentGiven = false;
+		this.consentDate = null;
+		this.dataRetentionUntil = null;
+	}
+
+	/**
+	 * Проверить, анонимизированы ли персональные данные.
+	 */
+	public boolean isAnonymized() {
+		return "Удалён".equals(this.name) && "Удалён".equals(this.surname);
+	}
+
+	/**
 	 * @return the name
 	 */
 	public String getName() {
