@@ -18,6 +18,10 @@ public class Receipt extends BaseEntity {
 
 	private static final long serialVersionUID = 1L;
 
+	@Version
+	@Column(name = "version")
+	private Long version;
+
 	/**
      * Заказ на ремонт (one-to-one).
      */

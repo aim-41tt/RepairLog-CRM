@@ -2,6 +2,8 @@ package ru.papkov.repairlog.application.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.papkov.repairlog.application.dto.supply.*;
@@ -59,6 +61,10 @@ public class SupplyRequestService {
         return supplyRequestRepository.findAll().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    public Page<SupplyRequestResponse> getAll(Pageable pageable) {
+        return supplyRequestRepository.findAll(pageable).map(this::toResponse);
     }
 
     public List<SupplyRequestResponse> getByStatus(String statusName) {
@@ -261,17 +267,12 @@ public class SupplyRequestService {
 
     @Transactional
     public void updateExternalOrderInfo(String externalOrderId, String externalStatus) {
-        // поиск заявки по externalOrderId через все заявки (можно оптимизировать)
-        List<SupplyRequest> all = supplyRequestRepository.findAll();
-        for (SupplyRequest sr : all) {
-            if (externalOrderId.equals(sr.getExternalOrderId())) {
-                sr.setExternalOrderStatus(externalStatus);
-                supplyRequestRepository.save(sr);
-                log.info("Обновлен статус внешнего заказа {} -> {}", externalOrderId, externalStatus);
-                return;
-            }
-        }
-        log.warn("Заявка с externalOrderId={} не найдена", externalOrderId);
+        SupplyRequest sr = supplyRequestRepository.findByExternalOrderId(externalOrderId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Заявка с externalOrderId=" + externalOrderId + " не найдена"));
+        sr.setExternalOrderStatus(externalStatus);
+        supplyRequestRepository.save(sr);
+        log.info("Обновлен статус внешнего заказа {} -> {}", externalOrderId, externalStatus);
     }
 
     // ========== Вспомогательные методы ==========

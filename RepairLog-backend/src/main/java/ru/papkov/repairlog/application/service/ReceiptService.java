@@ -75,10 +75,11 @@ public class ReceiptService {
 
     /**
      * Провести оплату (RECEPTIONIST).
+     * Используется PESSIMISTIC_WRITE для предотвращения race condition при параллельных платежах.
      */
     @Transactional
     public void processPayment(CreatePaymentRequest request, String acceptedByLogin) {
-        Receipt receipt = receiptRepository.findById(request.getReceiptId())
+        Receipt receipt = receiptRepository.findByIdForUpdate(request.getReceiptId())
                 .orElseThrow(() -> new EntityNotFoundException("Чек не найден"));
 
         Employee acceptedBy = employeeRepository.findByLogin(acceptedByLogin)

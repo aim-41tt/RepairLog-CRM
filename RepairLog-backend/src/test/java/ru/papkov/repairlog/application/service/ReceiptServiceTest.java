@@ -132,14 +132,14 @@ class ReceiptServiceTest {
     }
 
     @Test
-    @DisplayName("processPayment - успешная оплата")
+    @DisplayName("processPayment - успешная оплата с pessimistic lock")
     void processPayment_success() {
         CreatePaymentRequest request = new CreatePaymentRequest();
         request.setReceiptId(1L);
         request.setPaidAmount(new BigDecimal("5500.00"));
         request.setPaymentMethod("CASH");
 
-        when(receiptRepository.findById(1L)).thenReturn(Optional.of(testReceipt));
+        when(receiptRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testReceipt));
         when(employeeRepository.findByLogin("tech1")).thenReturn(Optional.of(testEmployee));
 
         receiptService.processPayment(request, "tech1");
@@ -159,7 +159,7 @@ class ReceiptServiceTest {
         request.setPaidAmount(new BigDecimal("1000.00"));
         request.setPaymentMethod("CARD");
 
-        when(receiptRepository.findById(1L)).thenReturn(Optional.of(testReceipt));
+        when(receiptRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testReceipt));
         when(employeeRepository.findByLogin("tech1")).thenReturn(Optional.of(testEmployee));
 
         receiptService.processPayment(request, "tech1");

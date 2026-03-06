@@ -25,6 +25,10 @@ public class SupplyRequest extends BaseEntity {
 	
 	private static final long serialVersionUID = 1L;
 
+	@Version
+	@Column(name = "version")
+	private Long version;
+
     /**
      * Номер заявки (уникальный, генерируется автоматически).
      */

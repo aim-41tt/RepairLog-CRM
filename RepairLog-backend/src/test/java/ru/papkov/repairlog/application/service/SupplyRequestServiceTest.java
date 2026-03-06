@@ -236,4 +236,30 @@ class SupplyRequestServiceTest {
         assertThatThrownBy(() -> supplyRequestService.assignSupplier(1L, 99L))
                 .isInstanceOf(EntityNotFoundException.class);
     }
+
+    @Test
+    @DisplayName("updateExternalOrderInfo - успешное обновление статуса внешнего заказа")
+    void updateExternalOrderInfo_success() {
+        testRequest.setExternalOrderId("EXT-001");
+        when(supplyRequestRepository.findByExternalOrderId("EXT-001"))
+                .thenReturn(Optional.of(testRequest));
+        when(supplyRequestRepository.save(any())).thenReturn(testRequest);
+
+        supplyRequestService.updateExternalOrderInfo("EXT-001", "SHIPPED");
+
+        assertThat(testRequest.getExternalOrderStatus()).isEqualTo("SHIPPED");
+        verify(supplyRequestRepository).findByExternalOrderId("EXT-001");
+        verify(supplyRequestRepository, never()).findAll();
+    }
+
+    @Test
+    @DisplayName("updateExternalOrderInfo - ошибка если заявка не найдена")
+    void updateExternalOrderInfo_throwsWhenNotFound() {
+        when(supplyRequestRepository.findByExternalOrderId("EXT-999"))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> supplyRequestService.updateExternalOrderInfo("EXT-999", "SHIPPED"))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("EXT-999");
+    }
 }

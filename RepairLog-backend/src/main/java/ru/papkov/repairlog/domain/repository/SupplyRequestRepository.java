@@ -12,6 +12,7 @@ import ru.papkov.repairlog.domain.model.enums.SupplyRequestSource;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository для работы с заявками на поставку.
@@ -39,6 +40,8 @@ public interface SupplyRequestRepository extends JpaRepository<SupplyRequest, Lo
     long countBySourceAndStatus(SupplyRequestSource source, SupplyRequestStatus status);
 
     long countByStatus(SupplyRequestStatus status);
+
+    Optional<SupplyRequest> findByExternalOrderId(String externalOrderId);
 
     @Query("SELECT sr FROM SupplyRequest sr WHERE sr.status.name = :statusName " +
            "AND sr.expectedDeliveryDate IS NOT NULL AND sr.expectedDeliveryDate < :now")

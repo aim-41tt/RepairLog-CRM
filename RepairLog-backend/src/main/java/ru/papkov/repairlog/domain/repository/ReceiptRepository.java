@@ -1,6 +1,8 @@
 package ru.papkov.repairlog.domain.repository;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -20,6 +22,10 @@ import java.util.Optional;
 public interface ReceiptRepository extends JpaRepository<Receipt, Long> {
 
     Optional<Receipt> findByRepairOrder(RepairOrder repairOrder);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Receipt r WHERE r.id = :id")
+    Optional<Receipt> findByIdForUpdate(@Param("id") Long id);
     
     List<Receipt> findByPaymentStatus(Receipt.PaymentStatus status);
     

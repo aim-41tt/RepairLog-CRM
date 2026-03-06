@@ -19,6 +19,10 @@ public class InventoryItem extends BaseEntity {
 	
 	private static final long serialVersionUID = 1L;
 
+	@Version
+	@Column(name = "version")
+	private Long version;
+
 	/**
      * Название товара.
      */
