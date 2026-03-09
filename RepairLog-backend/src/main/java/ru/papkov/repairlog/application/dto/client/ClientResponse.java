@@ -20,6 +20,7 @@ public class ClientResponse {
     private boolean consentGiven;
     private LocalDateTime consentDate;
     private LocalDate dataRetentionUntil;
+    private boolean notificationsEnabled;
     private LocalDateTime createdAt;
 
     public ClientResponse() {}
@@ -46,6 +47,8 @@ public class ClientResponse {
     public void setConsentDate(LocalDateTime consentDate) { this.consentDate = consentDate; }
     public LocalDate getDataRetentionUntil() { return dataRetentionUntil; }
     public void setDataRetentionUntil(LocalDate dataRetentionUntil) { this.dataRetentionUntil = dataRetentionUntil; }
+    public boolean isNotificationsEnabled() { return notificationsEnabled; }
+    public void setNotificationsEnabled(boolean notificationsEnabled) { this.notificationsEnabled = notificationsEnabled; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

@@ -85,6 +85,8 @@ public class ClientService {
             client.setDataRetentionUntil(LocalDate.now().plusYears(3));
         }
 
+        client.setNotificationsEnabled(request.isNotificationsEnabled());
+
         Client saved = clientRepository.save(client);
         return toResponse(saved);
     }
@@ -98,6 +100,7 @@ public class ClientService {
         client.setDateBirth(request.getDateBirth());
         client.setPhone(request.getPhone());
         client.setEmail(request.getEmail());
+        client.setNotificationsEnabled(request.isNotificationsEnabled());
         return toResponse(clientRepository.save(client));
     }
 
@@ -193,6 +196,7 @@ public class ClientService {
         r.setConsentGiven(c.getConsentGiven());
         r.setConsentDate(c.getConsentDate());
         r.setDataRetentionUntil(c.getDataRetentionUntil());
+        r.setNotificationsEnabled(c.getNotificationsEnabled() != null && c.getNotificationsEnabled());
         r.setCreatedAt(c.getCreatedAt());
         return r;
     }

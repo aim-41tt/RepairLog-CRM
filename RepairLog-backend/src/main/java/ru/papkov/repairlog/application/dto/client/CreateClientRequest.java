@@ -31,6 +31,9 @@ public class CreateClientRequest {
     /** Согласие на обработку ПДн (152-ФЗ). */
     private boolean consentGiven;
 
+    /** Согласие на получение уведомлений (SMS/Email). */
+    private boolean notificationsEnabled;
+
     public CreateClientRequest() {}
 
     public String getName() { return name; }
@@ -47,4 +50,6 @@ public class CreateClientRequest {
     public void setEmail(String email) { this.email = email; }
     public boolean isConsentGiven() { return consentGiven; }
     public void setConsentGiven(boolean consentGiven) { this.consentGiven = consentGiven; }
+    public boolean isNotificationsEnabled() { return notificationsEnabled; }
+    public void setNotificationsEnabled(boolean notificationsEnabled) { this.notificationsEnabled = notificationsEnabled; }
 }

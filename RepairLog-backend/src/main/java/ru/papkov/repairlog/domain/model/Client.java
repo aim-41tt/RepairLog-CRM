@@ -74,6 +74,13 @@ public class Client extends BaseEntity {
 	@Column(name = "data_retention_until")
 	private LocalDate dataRetentionUntil;
 
+	/**
+	 * Флаг согласия клиента на получение уведомлений (SMS/Email).
+	 * Если false — уведомления не отправляются через Kafka.
+	 */
+	@Column(name = "notifications_enabled", nullable = false)
+	private Boolean notificationsEnabled = false;
+
 	// ========== Вспомогательные методы ==========
 
 	/**
@@ -128,6 +135,7 @@ public class Client extends BaseEntity {
 		this.consentGiven = false;
 		this.consentDate = null;
 		this.dataRetentionUntil = null;
+		this.notificationsEnabled = false;
 	}
 
 	/**
@@ -261,6 +269,20 @@ public class Client extends BaseEntity {
 	 */
 	public void setDataRetentionUntil(LocalDate dataRetentionUntil) {
 		this.dataRetentionUntil = dataRetentionUntil;
+	}
+
+	/**
+	 * @return the notificationsEnabled
+	 */
+	public Boolean getNotificationsEnabled() {
+		return notificationsEnabled;
+	}
+
+	/**
+	 * @param notificationsEnabled the notificationsEnabled to set
+	 */
+	public void setNotificationsEnabled(Boolean notificationsEnabled) {
+		this.notificationsEnabled = notificationsEnabled;
 	}
 
 	@Override
