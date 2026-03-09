@@ -29,7 +29,10 @@ class SupplyRequestServiceTest {
     @Mock private SupplierRepository supplierRepository;
     @Mock private EmployeeRepository employeeRepository;
     @Mock private InventoryItemRepository inventoryItemRepository;
+    @Mock private InventoryMovementRepository inventoryMovementRepository;
     @Mock private RepairOrderRepository repairOrderRepository;
+    @Mock private SupplierPaymentRepository supplierPaymentRepository;
+    @Mock private SupplierInvoiceRepository supplierInvoiceRepository;
 
     @InjectMocks
     private SupplyRequestService supplyRequestService;
@@ -175,9 +178,10 @@ class SupplyRequestServiceTest {
         testRequest.setStatus(statusOrdered);
         when(supplyRequestRepository.findById(1L)).thenReturn(Optional.of(testRequest));
         when(statusRepository.findByName("DELIVERED")).thenReturn(Optional.of(statusDelivered));
+        when(employeeRepository.findByLogin("admin")).thenReturn(Optional.of(testAdmin));
         when(supplyRequestRepository.save(any())).thenReturn(testRequest);
 
-        supplyRequestService.markDelivered(1L);
+        supplyRequestService.markDelivered(1L, "admin");
 
         assertThat(testRequest.getStatus()).isEqualTo(statusDelivered);
     }
@@ -188,7 +192,7 @@ class SupplyRequestServiceTest {
         testRequest.setStatus(statusNew);
         when(supplyRequestRepository.findById(1L)).thenReturn(Optional.of(testRequest));
 
-        assertThatThrownBy(() -> supplyRequestService.markDelivered(1L))
+        assertThatThrownBy(() -> supplyRequestService.markDelivered(1L, "admin"))
                 .isInstanceOf(BusinessLogicException.class);
     }
 

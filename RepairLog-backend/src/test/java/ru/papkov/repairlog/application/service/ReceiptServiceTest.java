@@ -64,6 +64,9 @@ class ReceiptServiceTest {
         testEmployee.setName("Мастер");
         testEmployee.setSurname("Техников");
         testEmployee.setLogin("tech1");
+
+        // D7: назначаем мастера на заказ, чтобы проверка владения чеком проходила
+        testOrder.setAssignedMaster(testEmployee);
     }
 
     @Test

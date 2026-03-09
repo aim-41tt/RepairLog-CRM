@@ -48,4 +48,11 @@ public interface SupplyRequestRepository extends JpaRepository<SupplyRequest, Lo
     List<SupplyRequest> findOverdueDeliveries(
             @Param("statusName") String statusName,
             @Param("now") LocalDateTime now);
+
+    /**
+     * Атомарное получение следующего значения из PostgreSQL-последовательности.
+     * Используется для генерации уникальных номеров заявок на поставку (thread-safe).
+     */
+    @Query(value = "SELECT nextval('supply_request_number_seq')", nativeQuery = true)
+    Long getNextRequestNumber();
 }

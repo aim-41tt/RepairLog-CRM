@@ -15,6 +15,10 @@ public class SupplyRequestItemResponse {
     private Integer quantity;
     private BigDecimal unitPrice;
     private BigDecimal totalPrice;
+    /** ID складской позиции (если позиция привязана к складу). Null — если позиции нет на складе. */
+    private Long inventoryItemId;
+    /** Название складской позиции (для удобства фронтенда). */
+    private String inventoryItemName;
 
     public SupplyRequestItemResponse() {}
 
@@ -30,4 +34,8 @@ public class SupplyRequestItemResponse {
     public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
     public BigDecimal getTotalPrice() { return totalPrice; }
     public void setTotalPrice(BigDecimal totalPrice) { this.totalPrice = totalPrice; }
+    public Long getInventoryItemId() { return inventoryItemId; }
+    public void setInventoryItemId(Long inventoryItemId) { this.inventoryItemId = inventoryItemId; }
+    public String getInventoryItemName() { return inventoryItemName; }
+    public void setInventoryItemName(String inventoryItemName) { this.inventoryItemName = inventoryItemName; }
 }

@@ -30,11 +30,32 @@ public interface RepairOrderRepository extends JpaRepository<RepairOrder, Long> 
     
     List<RepairOrder> findByCurrentStatus(RepairStatus status);
     
-    @Query("SELECT ro FROM RepairOrder ro WHERE ro.assignedMaster = :master " +
-           "AND ro.actualCompletionDate IS NULL ORDER BY ro.priority.sortOrder ASC, ro.createdAt ASC")
+    @Query("SELECT ro FROM RepairOrder ro " +
+           "LEFT JOIN FETCH ro.client " +
+           "LEFT JOIN FETCH ro.device d " +
+           "LEFT JOIN FETCH d.deviceType " +
+           "LEFT JOIN FETCH d.model m " +
+           "LEFT JOIN FETCH m.brand " +
+           "LEFT JOIN FETCH ro.acceptedBy " +
+           "LEFT JOIN FETCH ro.assignedMaster " +
+           "LEFT JOIN FETCH ro.currentStatus " +
+           "LEFT JOIN FETCH ro.priority " +
+           "WHERE ro.assignedMaster = :master " +
+           "AND ro.actualCompletionDate IS NULL " +
+           "ORDER BY ro.priority.sortOrder ASC, ro.createdAt ASC")
     List<RepairOrder> findActiveOrdersByMaster(@Param("master") Employee master);
     
-    @Query("SELECT ro FROM RepairOrder ro WHERE ro.actualCompletionDate IS NULL " +
+    @Query("SELECT ro FROM RepairOrder ro " +
+           "LEFT JOIN FETCH ro.client " +
+           "LEFT JOIN FETCH ro.device d " +
+           "LEFT JOIN FETCH d.deviceType " +
+           "LEFT JOIN FETCH d.model m " +
+           "LEFT JOIN FETCH m.brand " +
+           "LEFT JOIN FETCH ro.acceptedBy " +
+           "LEFT JOIN FETCH ro.assignedMaster " +
+           "LEFT JOIN FETCH ro.currentStatus " +
+           "LEFT JOIN FETCH ro.priority " +
+           "WHERE ro.actualCompletionDate IS NULL " +
            "ORDER BY ro.priority.sortOrder ASC, ro.createdAt ASC")
     List<RepairOrder> findAllActiveOrders();
     
@@ -43,7 +64,16 @@ public interface RepairOrderRepository extends JpaRepository<RepairOrder, Long> 
     List<RepairOrder> findCompletedOrdersBetween(@Param("startDate") LocalDateTime startDate, 
                                                    @Param("endDate") LocalDateTime endDate);
     
-    @Query("SELECT ro FROM RepairOrder ro WHERE ro.assignedMaster IS NULL " +
+    @Query("SELECT ro FROM RepairOrder ro " +
+           "LEFT JOIN FETCH ro.client " +
+           "LEFT JOIN FETCH ro.device d " +
+           "LEFT JOIN FETCH d.deviceType " +
+           "LEFT JOIN FETCH d.model m " +
+           "LEFT JOIN FETCH m.brand " +
+           "LEFT JOIN FETCH ro.acceptedBy " +
+           "LEFT JOIN FETCH ro.currentStatus " +
+           "LEFT JOIN FETCH ro.priority " +
+           "WHERE ro.assignedMaster IS NULL " +
            "ORDER BY ro.priority.sortOrder ASC, ro.createdAt ASC")
     List<RepairOrder> findUnassignedOrders();
     

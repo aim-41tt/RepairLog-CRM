@@ -10,10 +10,12 @@ import ru.papkov.repairlog.application.dto.supply.*;
 import ru.papkov.repairlog.domain.exception.BusinessLogicException;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.*;
+import ru.papkov.repairlog.domain.model.enums.SupplierPaymentMethod;
 import ru.papkov.repairlog.domain.model.enums.SupplyRequestSource;
 import ru.papkov.repairlog.domain.repository.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -37,7 +39,10 @@ public class SupplyRequestService {
     private final SupplierRepository supplierRepository;
     private final EmployeeRepository employeeRepository;
     private final InventoryItemRepository inventoryItemRepository;
+    private final InventoryMovementRepository inventoryMovementRepository;
     private final RepairOrderRepository repairOrderRepository;
+    private final SupplierPaymentRepository supplierPaymentRepository;
+    private final SupplierInvoiceRepository supplierInvoiceRepository;
 
     public SupplyRequestService(SupplyRequestRepository supplyRequestRepository,
                                 SupplyRequestItemRepository supplyRequestItemRepository,
@@ -45,14 +50,20 @@ public class SupplyRequestService {
                                 SupplierRepository supplierRepository,
                                 EmployeeRepository employeeRepository,
                                 InventoryItemRepository inventoryItemRepository,
-                                RepairOrderRepository repairOrderRepository) {
+                                InventoryMovementRepository inventoryMovementRepository,
+                                RepairOrderRepository repairOrderRepository,
+                                SupplierPaymentRepository supplierPaymentRepository,
+                                SupplierInvoiceRepository supplierInvoiceRepository) {
         this.supplyRequestRepository = supplyRequestRepository;
         this.supplyRequestItemRepository = supplyRequestItemRepository;
         this.statusRepository = statusRepository;
         this.supplierRepository = supplierRepository;
         this.employeeRepository = employeeRepository;
         this.inventoryItemRepository = inventoryItemRepository;
+        this.inventoryMovementRepository = inventoryMovementRepository;
         this.repairOrderRepository = repairOrderRepository;
+        this.supplierPaymentRepository = supplierPaymentRepository;
+        this.supplierInvoiceRepository = supplierInvoiceRepository;
     }
 
     // ========== Чтение ==========
@@ -216,7 +227,7 @@ public class SupplyRequestService {
     }
 
     @Transactional
-    public SupplyRequestResponse markDelivered(Long id) {
+    public SupplyRequestResponse markDelivered(Long id, String deliveredByLogin) {
         SupplyRequest request = findById(id);
         String currentStatus = request.getStatus().getName();
         if (!SupplyStatusConstants.ORDERED.equals(currentStatus)
@@ -227,18 +238,38 @@ public class SupplyRequestService {
 
         request.setStatus(getStatus(SupplyStatusConstants.DELIVERED));
 
-        // обновляем last_purchase_price у привязанных inventory_items
+        Employee deliveredBy = employeeRepository.findByLogin(deliveredByLogin)
+                .orElseThrow(() -> new EntityNotFoundException("Сотрудник не найден: " + deliveredByLogin));
+
+        // обновляем last_purchase_price и пополняем склад у привязанных inventory_items
         if (request.getItems() != null) {
             for (SupplyRequestItem item : request.getItems()) {
-                if (item.getInventoryItem() != null && item.getUnitPrice() != null) {
+                if (item.getInventoryItem() != null) {
                     InventoryItem inv = item.getInventoryItem();
-                    inv.setLastPurchasePrice(item.getUnitPrice());
+
+                    // обновляем закупочную цену
+                    if (item.getUnitPrice() != null) {
+                        inv.setLastPurchasePrice(item.getUnitPrice());
+                    }
+
+                    // пополняем количество на складе
+                    inv.increaseQuantity(item.getQuantity());
                     inventoryItemRepository.save(inv);
+
+                    // создаём запись о движении товара (ПРИХОД)
+                    InventoryMovement movement = new InventoryMovement();
+                    movement.setInventoryItem(inv);
+                    movement.setMovementType(InventoryMovement.MovementType.ПРИХОД);
+                    movement.setQuantity(item.getQuantity());
+                    movement.setRelatedSupplyRequest(request);
+                    movement.setPerformedBy(deliveredBy);
+                    movement.setComment("Приёмка по заявке " + request.getRequestNumber());
+                    inventoryMovementRepository.save(movement);
                 }
             }
         }
 
-        log.info("Заявка {} отмечена как доставленная", request.getRequestNumber());
+        log.info("Заявка {} отмечена как доставленная, склад пополнен", request.getRequestNumber());
         return toResponse(supplyRequestRepository.save(request));
     }
 
@@ -257,6 +288,15 @@ public class SupplyRequestService {
     @Transactional
     public SupplyRequestResponse assignSupplier(Long id, Long supplierId) {
         SupplyRequest request = findById(id);
+
+        // Нельзя менять поставщика у завершённых или отменённых заявок
+        String currentStatus = request.getStatus().getName();
+        if (SupplyStatusConstants.DELIVERED.equals(currentStatus)
+                || SupplyStatusConstants.CANCELLED.equals(currentStatus)) {
+            throw new BusinessLogicException(
+                    "Нельзя сменить поставщика для заявки в статусе '" + currentStatus + "'");
+        }
+
         Supplier supplier = supplierRepository.findById(supplierId)
                 .orElseThrow(() -> new EntityNotFoundException("Поставщик не найден"));
 
@@ -275,6 +315,88 @@ public class SupplyRequestService {
         log.info("Обновлен статус внешнего заказа {} -> {}", externalOrderId, externalStatus);
     }
 
+    // ========== Оплата поставщикам ==========
+
+    @Transactional
+    public SupplierPaymentResponse recordPayment(CreateSupplierPaymentRequest request, String adminLogin) {
+        SupplyRequest supplyRequest = findById(request.getSupplyRequestId());
+
+        if (!SupplyStatusConstants.DELIVERED.equals(supplyRequest.getStatus().getName())) {
+            throw new BusinessLogicException(
+                    "Оплата возможна только для доставленных заявок (текущий статус: '"
+                            + supplyRequest.getStatus().getName() + "')");
+        }
+
+        Employee paidBy = employeeRepository.findByLogin(adminLogin)
+                .orElseThrow(() -> new EntityNotFoundException("Сотрудник не найден"));
+
+        SupplierPaymentMethod method;
+        try {
+            method = SupplierPaymentMethod.valueOf(request.getPaymentMethod().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessLogicException("Неизвестный способ оплаты: " + request.getPaymentMethod());
+        }
+
+        SupplierPayment payment = new SupplierPayment();
+        payment.setSupplyRequest(supplyRequest);
+        payment.setPaidAmount(request.getPaidAmount());
+        payment.setPaymentMethod(method);
+        payment.setPaidBy(paidBy);
+        payment.setTransactionId(request.getTransactionId());
+        payment.setComment(request.getComment());
+
+        SupplierPayment saved = supplierPaymentRepository.save(payment);
+        log.info("Записана оплата {} руб. по заявке {} администратором {}",
+                saved.getPaidAmount(), supplyRequest.getRequestNumber(), adminLogin);
+
+        return toPaymentResponse(saved);
+    }
+
+    public List<SupplierPaymentResponse> getPayments(Long supplyRequestId) {
+        return supplierPaymentRepository.findBySupplyRequestId(supplyRequestId).stream()
+                .map(this::toPaymentResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public SupplierInvoiceResponse createInvoice(CreateSupplierInvoiceRequest request) {
+        SupplyRequest supplyRequest = findById(request.getSupplyRequestId());
+
+        // Счёт можно создать только для заявки, которая уже подтверждена или в работе
+        String status = supplyRequest.getStatus().getName();
+        List<String> allowedForInvoice = List.of(
+                SupplyStatusConstants.APPROVED, SupplyStatusConstants.ORDERED,
+                SupplyStatusConstants.IN_TRANSIT, SupplyStatusConstants.DELIVERED);
+        if (!allowedForInvoice.contains(status)) {
+            throw new BusinessLogicException(
+                    "Нельзя создать счёт для заявки в статусе '" + status + "'");
+        }
+
+        if (supplyRequest.getSupplier() == null) {
+            throw new BusinessLogicException("К заявке не привязан поставщик");
+        }
+
+        SupplierInvoice invoice = new SupplierInvoice();
+        invoice.setSupplyRequest(supplyRequest);
+        invoice.setSupplier(supplyRequest.getSupplier());
+        invoice.setInvoiceNumber(request.getInvoiceNumber());
+        invoice.setInvoiceDate(request.getInvoiceDate());
+        invoice.setTotalAmount(request.getTotalAmount());
+        invoice.setDueDate(request.getDueDate());
+        invoice.setStatus(SupplierInvoice.InvoiceStatus.PENDING);
+
+        SupplierInvoice saved = supplierInvoiceRepository.save(invoice);
+        log.info("Привязан счёт {} к заявке {}", saved.getInvoiceNumber(), supplyRequest.getRequestNumber());
+
+        return toInvoiceResponse(saved);
+    }
+
+    public List<SupplierInvoiceResponse> getInvoices(Long supplyRequestId) {
+        return supplierInvoiceRepository.findBySupplyRequestId(supplyRequestId).stream()
+                .map(this::toInvoiceResponse)
+                .collect(Collectors.toList());
+    }
+
     // ========== Вспомогательные методы ==========
 
     private SupplyRequest findById(Long id) {
@@ -288,8 +410,9 @@ public class SupplyRequestService {
     }
 
     private String generateRequestNumber() {
+        // Используем PostgreSQL-последовательность для thread-safe генерации номера
         return "SR-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
-                + "-" + String.format("%04d", supplyRequestRepository.count() + 1);
+                + "-" + String.format("%04d", supplyRequestRepository.getNextRequestNumber());
     }
 
     private void validateStatusTransition(SupplyRequest request, String expectedCurrent, String target) {
@@ -357,10 +480,42 @@ public class SupplyRequestService {
                 ir.setQuantity(item.getQuantity());
                 ir.setUnitPrice(item.getUnitPrice());
                 ir.setTotalPrice(item.getTotalPrice());
+                ir.setInventoryItemId(item.getInventoryItem() != null ? item.getInventoryItem().getId() : null);
+                ir.setInventoryItemName(item.getInventoryItem() != null ? item.getInventoryItem().getName() : null);
                 return ir;
             }).collect(Collectors.toList()));
         }
 
+        return r;
+    }
+
+    private SupplierPaymentResponse toPaymentResponse(SupplierPayment p) {
+        SupplierPaymentResponse r = new SupplierPaymentResponse();
+        r.setId(p.getId());
+        r.setSupplyRequestId(p.getSupplyRequest() != null ? p.getSupplyRequest().getId() : null);
+        r.setRequestNumber(p.getSupplyRequest() != null ? p.getSupplyRequest().getRequestNumber() : null);
+        r.setPaidAmount(p.getPaidAmount());
+        r.setPaymentMethod(p.getPaymentMethod() != null ? p.getPaymentMethod().name() : null);
+        r.setPaidAt(p.getPaidAt());
+        r.setPaidByName(p.getPaidBy() != null ? p.getPaidBy().getFullName() : null);
+        r.setTransactionId(p.getTransactionId());
+        r.setComment(p.getComment());
+        return r;
+    }
+
+    private SupplierInvoiceResponse toInvoiceResponse(SupplierInvoice inv) {
+        SupplierInvoiceResponse r = new SupplierInvoiceResponse();
+        r.setId(inv.getId());
+        r.setSupplyRequestId(inv.getSupplyRequest() != null ? inv.getSupplyRequest().getId() : null);
+        r.setRequestNumber(inv.getSupplyRequest() != null ? inv.getSupplyRequest().getRequestNumber() : null);
+        r.setSupplierId(inv.getSupplier() != null ? inv.getSupplier().getId() : null);
+        r.setSupplierName(inv.getSupplier() != null ? inv.getSupplier().getName() : null);
+        r.setInvoiceNumber(inv.getInvoiceNumber());
+        r.setInvoiceDate(inv.getInvoiceDate());
+        r.setTotalAmount(inv.getTotalAmount());
+        r.setDueDate(inv.getDueDate());
+        r.setStatus(inv.getStatus() != null ? inv.getStatus().name() : null);
+        r.setCreatedAt(inv.getCreatedAt());
         return r;
     }
 }
