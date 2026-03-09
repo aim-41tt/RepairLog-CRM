@@ -8,6 +8,10 @@
 
 CREATE EXTENSION IF NOT EXISTS citext;
 
+-- Sequence для генерации уникальных номеров заявок на поставку (атомарная операция)
+CREATE SEQUENCE IF NOT EXISTS supply_request_number_seq
+    START 1 INCREMENT 1 NO CYCLE;
+
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- РОЛИ И СОТРУДНИКИ
@@ -109,7 +113,10 @@ CREATE TABLE clients (
     consent_given BOOLEAN NOT NULL DEFAULT FALSE,
     consent_date TIMESTAMP,
     data_retention_until DATE,
-    
+
+    -- Согласие на получение уведомлений
+    notifications_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     last_modified_at TIMESTAMP
 );
@@ -118,6 +125,7 @@ COMMENT ON TABLE clients IS 'Клиенты сервисного центра';
 COMMENT ON COLUMN clients.consent_given IS 'Флаг согласия на обработку персональных данных (152-ФЗ)';
 COMMENT ON COLUMN clients.consent_date IS 'Дата получения согласия на обработку ПДн';
 COMMENT ON COLUMN clients.data_retention_until IS 'Дата до которой могут храниться персональные данные';
+COMMENT ON COLUMN clients.notifications_enabled IS 'Флаг согласия на получение уведомлений (SMS/Email)';
 
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -179,7 +187,9 @@ COMMENT ON COLUMN devices.is_client_owned IS 'Принадлежит ли уст
 
 CREATE TABLE repair_statuses (
     id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE
+    name    VARCHAR(50) NOT NULL UNIQUE,
+    code    VARCHAR(30) NOT NULL UNIQUE,
+    is_final BOOLEAN    NOT NULL DEFAULT FALSE
 );
 
 COMMENT ON TABLE repair_statuses IS 'Статусы заказов на ремонт';
@@ -348,6 +358,8 @@ CREATE TABLE receipts (
     locked_at TIMESTAMP,
     locked_by BIGINT,
 
+    version BIGINT NOT NULL DEFAULT 0,
+
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     last_modified_at TIMESTAMP,
 
@@ -422,6 +434,8 @@ CREATE TABLE inventory_items (
     price_updated_at TIMESTAMP,
     reorder_quantity INTEGER DEFAULT 0,
     pack_size INTEGER NOT NULL DEFAULT 1,
+
+    version BIGINT NOT NULL DEFAULT 0,
 
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     last_modified_at TIMESTAMP,
@@ -590,6 +604,8 @@ CREATE TABLE supply_requests (
     external_order_id VARCHAR(100),
     external_order_status VARCHAR(50),
 
+    version BIGINT NOT NULL DEFAULT 0,
+
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     last_modified_at TIMESTAMP,
 
@@ -623,6 +639,66 @@ CREATE TABLE supply_request_items (
 );
 
 COMMENT ON TABLE supply_request_items IS 'Позиции в запросах на поставку';
+
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- СЧЕТА ОТ ПОСТАВЩИКОВ
+-- ════════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE supplier_invoices (
+    id BIGSERIAL PRIMARY KEY,
+    supply_request_id BIGINT NOT NULL,
+    supplier_id BIGINT NOT NULL,
+    invoice_number VARCHAR(50) NOT NULL,
+    invoice_date DATE NOT NULL,
+    total_amount NUMERIC(12,2) NOT NULL,
+    due_date DATE,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    last_modified_at TIMESTAMP,
+
+    FOREIGN KEY (supply_request_id) REFERENCES supply_requests(id),
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
+
+    CHECK (status IN ('PENDING', 'PAID', 'OVERDUE', 'CANCELLED'))
+);
+
+COMMENT ON TABLE supplier_invoices IS 'Счета от поставщиков, привязанные к заявкам на поставку';
+COMMENT ON COLUMN supplier_invoices.status IS 'Статус счёта: PENDING, PAID, OVERDUE, CANCELLED';
+
+CREATE INDEX idx_supplier_invoices_request ON supplier_invoices(supply_request_id);
+CREATE INDEX idx_supplier_invoices_supplier ON supplier_invoices(supplier_id);
+
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- ОПЛАТА ПОСТАВЩИКАМ
+-- ════════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE supplier_payments (
+    id BIGSERIAL PRIMARY KEY,
+    supply_request_id BIGINT NOT NULL,
+    paid_amount NUMERIC(12,2) NOT NULL,
+    payment_method VARCHAR(20) NOT NULL,
+    paid_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    paid_by BIGINT NOT NULL,
+    transaction_id VARCHAR(100),
+    comment TEXT,
+
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    last_modified_at TIMESTAMP,
+
+    FOREIGN KEY (supply_request_id) REFERENCES supply_requests(id),
+    FOREIGN KEY (paid_by) REFERENCES employees(id),
+
+    CHECK (payment_method IN ('CASH', 'CARD', 'TRANSFER', 'OTHER'))
+);
+
+COMMENT ON TABLE supplier_payments IS 'Записи об оплатах поставщикам';
+COMMENT ON COLUMN supplier_payments.payment_method IS 'Способ оплаты: CASH, CARD, TRANSFER, OTHER';
+
+CREATE INDEX idx_supplier_payments_request ON supplier_payments(supply_request_id);
+CREATE INDEX idx_supplier_payments_transaction ON supplier_payments(transaction_id) WHERE transaction_id IS NOT NULL;
 
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -815,16 +891,24 @@ CREATE OR REPLACE FUNCTION create_status_change_notification()
 RETURNS TRIGGER AS $$
 DECLARE
     v_client_id BIGINT;
+    v_notifications_enabled BOOLEAN;
     v_status_name VARCHAR(50);
     v_sms_template TEXT;
     v_email_subject VARCHAR(200);
     v_email_template TEXT;
 BEGIN
-    SELECT ro.client_id, rs.name
-    INTO v_client_id, v_status_name
+    -- Получаем клиента и проверяем, подписан ли он на уведомления
+    SELECT ro.client_id, c.notifications_enabled, rs.name
+    INTO v_client_id, v_notifications_enabled, v_status_name
     FROM repair_orders ro
+    JOIN clients c ON c.id = ro.client_id
     JOIN repair_statuses rs ON rs.id = NEW.status_id
     WHERE ro.id = NEW.repair_order_id;
+
+    -- Если клиент не подписан на уведомления — не создаём
+    IF v_notifications_enabled IS NULL OR v_notifications_enabled = FALSE THEN
+        RETURN NEW;
+    END IF;
 
     SELECT sms_template, email_subject, email_template
     INTO v_sms_template, v_email_subject, v_email_template
@@ -856,7 +940,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-COMMENT ON FUNCTION create_status_change_notification IS 'Создание уведомления клиента при смене статуса заказа';
+COMMENT ON FUNCTION create_status_change_notification IS 'Создание уведомления клиента при смене статуса заказа (только если notifications_enabled = TRUE)';
 
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -1233,18 +1317,18 @@ INSERT INTO roles (name) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- Вставка статусов ремонта
-INSERT INTO repair_statuses (name) VALUES 
-('Новая'),
-('Принята'),
-('Диагностика'),
-('Ожидает запчастей'),
-('Ожидает подтверждения клиента'),
-('В ремонте'),
-('Ремонт завершен'),
-('Готов к выдаче'),
-('Выдан'),
-('Отменен'),
-('Гарантийный случай')
+INSERT INTO repair_statuses (name, code, is_final) VALUES
+('Новая',                        'NEW',            false),
+('Принята',                      'ACCEPTED',       false),
+('Диагностика',                  'DIAGNOSTIC',     false),
+('Ожидает запчастей',            'WAITING_PARTS',  false),
+('Ожидает подтверждения клиента','WAITING_CLIENT', false),
+('В ремонте',                    'IN_REPAIR',      false),
+('Ремонт завершен',              'REPAIR_DONE',    false),
+('Готов к выдаче',               'READY',          false),
+('Выдан',                        'ISSUED',         true),
+('Отменен',                      'CANCELLED',      true),
+('Гарантийный случай',           'WARRANTY',       false)
 ON CONFLICT (name) DO NOTHING;
 
 -- Вставка статусов поставок (английские — локализация на фронтенде)
