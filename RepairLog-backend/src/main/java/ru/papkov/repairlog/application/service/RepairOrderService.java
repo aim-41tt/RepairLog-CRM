@@ -96,6 +96,13 @@ public class RepairOrderService {
                 .orElseThrow(() -> new EntityNotFoundException("Клиент не найден"));
         Device device = deviceRepository.findById(request.getDeviceId())
                 .orElseThrow(() -> new EntityNotFoundException("Устройство не найдено"));
+
+        // Проверяем принадлежность устройства клиенту (если устройство клиентское)
+        if (device.getClient() != null && !device.getClient().getId().equals(client.getId())) {
+            throw new BusinessLogicException(
+                    "Устройство #" + device.getId() + " не принадлежит клиенту #" + client.getId());
+        }
+
         Employee acceptedBy = employeeRepository.findByLogin(acceptedByLogin)
                 .orElseThrow(() -> new EntityNotFoundException("Сотрудник не найден"));
         RepairStatus newStatus = repairStatusRepository.findByCode("NEW")
@@ -219,11 +226,17 @@ public class RepairOrderService {
         r.setActualCompletionDate(o.getActualCompletionDate());
         r.setCreatedAt(o.getCreatedAt());
 
-        // подтягиваем данные чека если есть
-        receiptRepository.findByRepairOrder(o).ifPresent(receipt -> {
-            r.setTotalAmount(receipt.getTotalAmount());
-            r.setPaymentStatus(receipt.getPaymentStatus().name());
-        });
+        // подтягиваем данные чека, если чек уже создан
+        receiptRepository.findByRepairOrder(o).ifPresentOrElse(
+            receipt -> {
+                r.setTotalAmount(receipt.getTotalAmount());
+                r.setPaymentStatus(receipt.getPaymentStatus().name());
+            },
+            () -> {
+                r.setTotalAmount(java.math.BigDecimal.ZERO);
+                r.setPaymentStatus("UNPAID");
+            }
+        );
 
         return r;
     }
