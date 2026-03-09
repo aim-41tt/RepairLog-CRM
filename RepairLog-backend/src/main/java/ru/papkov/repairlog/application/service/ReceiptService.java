@@ -57,6 +57,13 @@ public class ReceiptService {
         Receipt receipt = receiptRepository.findById(request.getReceiptId())
                 .orElseThrow(() -> new EntityNotFoundException("Чек не найден"));
 
+        // Проверяем, что чек принадлежит заказу, назначенному на текущего техника
+        RepairOrder order = receipt.getRepairOrder();
+        if (order.getAssignedMaster() == null ||
+                !order.getAssignedMaster().getLogin().equals(employeeLogin)) {
+            throw new BusinessLogicException("Вы не являетесь мастером этого заказа");
+        }
+
         if (!receipt.isEditable()) {
             throw new BusinessLogicException("Чек заблокирован для редактирования");
         }
