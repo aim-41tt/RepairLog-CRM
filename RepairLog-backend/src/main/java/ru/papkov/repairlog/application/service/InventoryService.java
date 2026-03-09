@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.papkov.repairlog.application.dto.inventory.CreateInventoryItemRequest;
 import ru.papkov.repairlog.application.dto.inventory.InventoryItemResponse;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.*;
@@ -32,15 +33,18 @@ public class InventoryService {
     private final InventoryMovementRepository inventoryMovementRepository;
     private final RepairOrderRepository repairOrderRepository;
     private final EmployeeRepository employeeRepository;
+    private final DegreeWearRepository degreeWearRepository;
 
     public InventoryService(InventoryItemRepository inventoryItemRepository,
                             InventoryMovementRepository inventoryMovementRepository,
                             RepairOrderRepository repairOrderRepository,
-                            EmployeeRepository employeeRepository) {
+                            EmployeeRepository employeeRepository,
+                            DegreeWearRepository degreeWearRepository) {
         this.inventoryItemRepository = inventoryItemRepository;
         this.inventoryMovementRepository = inventoryMovementRepository;
         this.repairOrderRepository = repairOrderRepository;
         this.employeeRepository = employeeRepository;
+        this.degreeWearRepository = degreeWearRepository;
     }
 
     @Transactional(readOnly = true)
@@ -51,12 +55,54 @@ public class InventoryService {
 
     @Transactional(readOnly = true)
     public Page<InventoryItemResponse> getAll(Pageable pageable) {
-        return inventoryItemRepository.findAll(pageable).map(this::toResponse);
+        // Используем findByInStockTrue для единообразия с getAll() (не-pageable версией)
+        return inventoryItemRepository.findByInStockTrue(pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
     public InventoryItemResponse getById(Long id) {
         return toResponse(findItem(id));
+    }
+
+    /**
+     * Создание новой складской позиции.
+     * Используется для ручной постановки запчастей/устройств на учёт:
+     * подарок, возврат от клиента, излишки, найденное на складе и т.д.
+     */
+    @Transactional
+    public InventoryItemResponse createItem(CreateInventoryItemRequest request, String adminLogin) {
+        Employee employee = employeeRepository.findByLogin(adminLogin)
+                .orElseThrow(() -> new EntityNotFoundException("Сотрудник не найден: " + adminLogin));
+
+        DegreeWear degreeWear = degreeWearRepository.findByName("Новое")
+                .orElseThrow(() -> new EntityNotFoundException("Степень износа 'Новое' не найдена в справочнике"));
+
+        InventoryItem item = new InventoryItem();
+        item.setName(request.getName());
+        item.setSerialNumber(request.getPartNumber());
+        item.setDegreeWear(degreeWear);
+        item.setIsDevice(false);
+        item.setUnitPrice(request.getSellingPrice() != null ? request.getSellingPrice() : java.math.BigDecimal.ZERO);
+        item.setQuantity(request.getQuantity());
+        item.setInStock(request.getQuantity() > 0);
+        item.setMinStockLevel(request.getMinQuantity() != null ? request.getMinQuantity() : 0);
+        item.setLastPurchasePrice(request.getPurchasePrice());
+
+        InventoryItem saved = inventoryItemRepository.save(item);
+
+        if (request.getQuantity() > 0) {
+            InventoryMovement movement = new InventoryMovement(
+                    saved, InventoryMovement.MovementType.ПРИХОД, request.getQuantity(),
+                    null, null, employee,
+                    "Первичная постановка на учёт" +
+                            (request.getDescription() != null ? ": " + request.getDescription() : ""));
+            inventoryMovementRepository.save(movement);
+        }
+
+        log.info("Создана складская позиция '{}' (qty={}) администратором {}",
+                saved.getName(), saved.getQuantity(), adminLogin);
+
+        return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -120,7 +166,8 @@ public class InventoryService {
     public int updatePricesFromWebhook(List<PriceUpdateWebhookRequest.PriceItem> items) {
         int updated = 0;
         for (PriceUpdateWebhookRequest.PriceItem priceItem : items) {
-            var inventoryItems = inventoryItemRepository.findByNameContainingIgnoreCase(priceItem.getItemName());
+            // Используем точный поиск по имени вместо substring, чтобы не обновлять несвязанные позиции
+            var inventoryItems = inventoryItemRepository.findByNameIgnoreCase(priceItem.getItemName());
             for (InventoryItem item : inventoryItems) {
                 item.setCurrentMarketPrice(priceItem.getPrice());
                 item.setPriceUpdatedAt(LocalDateTime.now());

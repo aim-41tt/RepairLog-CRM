@@ -19,6 +19,7 @@ import ru.papkov.repairlog.application.dto.common.PageResponse;
 import ru.papkov.repairlog.application.dto.employee.CreateEmployeeRequest;
 import ru.papkov.repairlog.application.dto.employee.EmployeeResponse;
 import ru.papkov.repairlog.application.dto.employee.UpdateEmployeeRequest;
+import ru.papkov.repairlog.application.dto.inventory.CreateInventoryItemRequest;
 import ru.papkov.repairlog.application.dto.inventory.InventoryItemResponse;
 import ru.papkov.repairlog.application.dto.notification.NotificationResponse;
 import ru.papkov.repairlog.application.dto.supplier.CreateSupplierRequest;
@@ -144,6 +145,15 @@ public class AdminController {
         return ResponseEntity.ok(inventoryService.getLowStock());
     }
 
+    @PostMapping("/inventory")
+    @Operation(summary = "Создать складскую позицию (подарок, возврат от клиента, излишки и т.д.)")
+    public ResponseEntity<InventoryItemResponse> createInventoryItem(
+            @Valid @RequestBody CreateInventoryItemRequest request,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(inventoryService.createItem(request, user.getUsername()));
+    }
+
     @PostMapping("/inventory/{itemId}/receive")
     @Operation(summary = "Приёмка товара на склад")
     public ResponseEntity<Map<String, String>> receiveStock(@PathVariable Long itemId,
@@ -258,9 +268,10 @@ public class AdminController {
     }
 
     @PostMapping("/supply-requests/{id}/delivered")
-    @Operation(summary = "Отметить заявку как доставленную")
-    public ResponseEntity<SupplyRequestResponse> markDelivered(@PathVariable Long id) {
-        return ResponseEntity.ok(supplyRequestService.markDelivered(id));
+    @Operation(summary = "Отметить заявку как доставленную (автоматически пополняет склад)")
+    public ResponseEntity<SupplyRequestResponse> markDelivered(@PathVariable Long id,
+                                                               @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(supplyRequestService.markDelivered(id, user.getUsername()));
     }
 
     @PostMapping("/supply-requests/{id}/assign-supplier")
@@ -269,6 +280,41 @@ public class AdminController {
             @PathVariable Long id,
             @Valid @RequestBody AssignSupplierRequest request) {
         return ResponseEntity.ok(supplyRequestService.assignSupplier(id, request.getSupplierId()));
+    }
+
+    // ==================== Оплата поставщикам ====================
+
+    @PostMapping("/supply-requests/{id}/payment")
+    @Operation(summary = "Записать оплату поставщику")
+    public ResponseEntity<SupplierPaymentResponse> recordPayment(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateSupplierPaymentRequest request,
+            @AuthenticationPrincipal UserDetails user) {
+        request.setSupplyRequestId(id);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(supplyRequestService.recordPayment(request, user.getUsername()));
+    }
+
+    @GetMapping("/supply-requests/{id}/payments")
+    @Operation(summary = "Список оплат по заявке")
+    public ResponseEntity<List<SupplierPaymentResponse>> getPayments(@PathVariable Long id) {
+        return ResponseEntity.ok(supplyRequestService.getPayments(id));
+    }
+
+    @PostMapping("/supply-requests/{id}/invoice")
+    @Operation(summary = "Привязать счёт от поставщика")
+    public ResponseEntity<SupplierInvoiceResponse> createInvoice(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateSupplierInvoiceRequest request) {
+        request.setSupplyRequestId(id);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(supplyRequestService.createInvoice(request));
+    }
+
+    @GetMapping("/supply-requests/{id}/invoices")
+    @Operation(summary = "Список счетов по заявке")
+    public ResponseEntity<List<SupplierInvoiceResponse>> getInvoices(@PathVariable Long id) {
+        return ResponseEntity.ok(supplyRequestService.getInvoices(id));
     }
 
     // ==================== Дашборд поставок ====================
