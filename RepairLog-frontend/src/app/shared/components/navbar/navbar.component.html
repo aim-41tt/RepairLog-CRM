@@ -1,0 +1,15 @@
+<header class="navbar">
+  <a class="navbar__brand" routerLink="/menu">CRM Сервисного центра</a>
+
+  <div class="navbar__spacer"></div>
+
+  <span class="navbar__user">{{ userService.fullName() }}</span>
+
+  <select class="navbar__theme-select" [value]="themeService.mode()" (change)="onThemeChange($event)">
+    <option value="light">Светлая</option>
+    <option value="dark">Тёмная</option>
+    <option value="system">Системная</option>
+  </select>
+
+  <button class="btn btn--ghost navbar__logout" (click)="logout()">Выйти</button>
+</header>

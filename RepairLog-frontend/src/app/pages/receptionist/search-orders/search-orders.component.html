@@ -1,0 +1,98 @@
+<app-page-layout role="receptionist">
+  <div class="page-header">
+    <h1>Поиск заявок</h1>
+    <a class="btn btn--ghost" routerLink="/receptionist">Назад</a>
+  </div>
+
+  <div class="toolbar">
+    <input type="search" placeholder="Номер, фамилия, телефон или серийный номер..." style="flex:1;max-width:400px"
+      [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value)" (keyup.enter)="search()" />
+    <button class="btn btn--primary" (click)="search()">Найти</button>
+  </div>
+
+  @for (order of orders(); track order.id) {
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <strong>{{ order.orderNumber }}</strong>
+          <span class="badge badge--info" style="margin-left:8px">{{ order.currentStatusName }}</span>
+          <span class="badge" [class]="paymentBadge(order.paymentStatus)" style="margin-left:6px">{{ paymentLabel(order.paymentStatus) }}</span>
+          <p class="text-muted" style="margin:4px 0 0">{{ order.clientFullName }} | {{ order.deviceDescription }}</p>
+          <p class="text-muted" style="margin:4px 0 0;font-size:12px">{{ order.clientComplaint }}</p>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn--ghost btn--sm" (click)="toggleDetails(order.id)">
+            {{ expandedOrderId() === order.id ? 'Скрыть' : 'Подробнее' }}
+          </button>
+          @if (selectedOrderId() === order.id) {
+            <select [value]="selectedStatusId()" (change)="selectedStatusId.set(+$any($event.target).value)">
+              <option value="0">Выберите статус...</option>
+              @for (s of statuses(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
+            </select>
+            <button class="btn btn--primary btn--sm" (click)="changeStatus(order.id)">Сохранить</button>
+            <button class="btn btn--ghost btn--sm" (click)="selectedOrderId.set(null)">Отмена</button>
+          } @else {
+            <button class="btn btn--ghost btn--sm" (click)="selectedOrderId.set(order.id)">Изменить статус</button>
+          }
+        </div>
+      </div>
+
+      <!-- Expanded details -->
+      @if (expandedOrderId() === order.id) {
+        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+          @if (detailsLoading()) {
+            <p class="text-muted">Загрузка...</p>
+          } @else {
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <!-- Diagnostics -->
+              <div>
+                <p style="font-weight:600;margin-bottom:8px">Диагностика</p>
+                @if (orderDiagnostic()) {
+                  <p><strong>{{ orderDiagnostic()!.description }}</strong></p>
+                  @if (orderDiagnostic()!.solution) {
+                    <p class="text-muted">Решение: {{ orderDiagnostic()!.solution }}</p>
+                  }
+                  <p class="text-muted" style="font-size:12px">{{ orderDiagnostic()!.performedByName }} · {{ orderDiagnostic()!.createdAt | date:'dd.MM.yyyy HH:mm' }}</p>
+                } @else {
+                  <p class="text-muted">Диагностика не проведена</p>
+                }
+              </div>
+
+              <!-- Works & Total -->
+              <div>
+                <p style="font-weight:600;margin-bottom:8px">Работы</p>
+                @if (orderReceipt()?.works?.length) {
+                  @for (w of orderReceipt()!.works; track w.id) {
+                    <p>{{ w.description }} — <strong>{{ w.price }} ₽</strong></p>
+                  }
+                  <p style="margin-top:8px;font-weight:600">Итого: {{ orderReceipt()!.totalAmount }} ₽</p>
+                } @else {
+                  <p class="text-muted">Работы не добавлены</p>
+                }
+              </div>
+
+              @if (statusHistory().length) {
+                <div style="grid-column:1/-1;margin-top:8px">
+                  <p style="font-weight:600;margin-bottom:8px">История статусов</p>
+                  @for (h of statusHistory(); track h.id) {
+                    <div style="margin-bottom:8px;padding-left:16px;border-left:3px solid var(--border)">
+                      <p><span class="badge badge--info">{{ h.statusName }}</span></p>
+                      <p class="text-muted" style="font-size:12px;margin-top:2px">{{ h.changedByName }} · {{ h.changedAt | date:'dd.MM.yyyy HH:mm' }}</p>
+                      @if (h.comment) { <p style="font-size:13px;margin-top:2px">{{ h.comment }}</p> }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  } @empty {
+    @if (searchQuery()) {
+      <div class="empty-state"><p>Заявки не найдены</p></div>
+    } @else {
+      <div class="empty-state"><p>Введите номер, фамилию, телефон или серийный номер для поиска</p></div>
+    }
+  }
+</app-page-layout>

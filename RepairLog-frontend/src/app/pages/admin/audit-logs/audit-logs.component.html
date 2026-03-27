@@ -1,0 +1,47 @@
+<app-page-layout role="admin">
+  <div class="page-header">
+    <h1>Журнал аудита (152-ФЗ)</h1>
+    <a class="btn btn--ghost" routerLink="/admin">Назад</a>
+  </div>
+
+  <div class="filter-bar" style="display:flex;gap:12px;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap">
+    <div class="form-group" style="margin:0">
+      <label style="font-size:13px">С</label>
+      <input type="datetime-local" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event)" />
+    </div>
+    <div class="form-group" style="margin:0">
+      <label style="font-size:13px">По</label>
+      <input type="datetime-local" [ngModel]="toDate()" (ngModelChange)="toDate.set($event)" />
+    </div>
+    <button class="btn btn--primary btn--sm" (click)="filterByPeriod()" [disabled]="!fromDate() || !toDate()">Фильтр</button>
+    <button class="btn btn--ghost btn--sm" (click)="resetFilter()">Сбросить</button>
+  </div>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Дата</th><th>Сотрудник</th><th>Действие</th><th>Ресурс</th><th>ID</th><th>Результат</th></tr></thead>
+      <tbody>
+        @for (e of entries(); track e.id) {
+          <tr>
+            <td>{{ e.createdAt | date:'dd.MM.yyyy HH:mm' }}</td>
+            <td>{{ e.employeeName }}</td>
+            <td>{{ e.action }}</td>
+            <td>{{ e.resourceType }}</td>
+            <td>{{ e.resourceId }}</td>
+            <td>{{ e.result || '—' }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="6" class="text-muted" style="text-align:center">Нет записей</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (totalPages() > 1) {
+    <div class="pagination">
+      <button (click)="prev()" [disabled]="page() === 0">&laquo;</button>
+      <span>{{ page() + 1 }} / {{ totalPages() }}</span>
+      <button (click)="next()" [disabled]="page() === totalPages() - 1">&raquo;</button>
+    </div>
+  }
+</app-page-layout>

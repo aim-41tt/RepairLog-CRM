@@ -1,0 +1,81 @@
+<app-page-layout role="admin">
+  <div class="page-header">
+    <h1>Поставщики</h1>
+    <div>
+      <a class="btn btn--ghost" routerLink="/admin">Назад</a>
+      <button class="btn btn--primary" style="margin-left:8px" (click)="showForm.set(!showForm())">Добавить</button>
+    </div>
+  </div>
+
+  <div style="margin-bottom:12px">
+    <button class="btn btn--ghost btn--sm" (click)="toggleActiveFilter()">
+      {{ showActiveOnly() ? 'Все поставщики' : 'Только активные' }}
+    </button>
+  </div>
+
+  <!-- Integration type filter -->
+  <div class="status-filter-bar">
+    @for (t of integrationTypes; track t) {
+      <button [class.active]="activeFilter() === t" (click)="setFilter(t)">{{ integrationLabel(t) }}</button>
+    }
+  </div>
+
+  @if (showForm()) {
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-title">Новый поставщик</div>
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <div class="form-row">
+          <div class="form-group"><label>Название *</label><input type="text" formControlName="name" /></div>
+          <div class="form-group"><label>Контактное лицо</label><input type="text" formControlName="contactPerson" /></div>
+          <div class="form-group"><label>Телефон</label><input type="tel" formControlName="phone" /></div>
+          <div class="form-group"><label>Email</label><input type="email" formControlName="email" /></div>
+          <div class="form-group">
+            <label>Тип интеграции</label>
+            <select formControlName="integrationType">
+              @for (t of integrationTypes; track t) {
+                @if (t !== 'ALL') {
+                  <option [value]="t">{{ integrationLabel(t) }}</option>
+                }
+              }
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button type="submit" class="btn btn--primary">Сохранить</button>
+          <button type="button" class="btn btn--ghost" (click)="showForm.set(false)">Отмена</button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Название</th><th>Контакт</th><th>Телефон</th><th>Email</th><th>Интеграция</th><th>Статус</th><th>Действия</th></tr></thead>
+      <tbody>
+        @for (s of suppliers(); track s.id) {
+          <tr>
+            <td>{{ s.name }}</td>
+            <td>{{ s.contactPerson || '—' }}</td>
+            <td>{{ s.phone || '—' }}</td>
+            <td>{{ s.email || '—' }}</td>
+            <td>{{ integrationLabel(s.integrationType || 'MANUAL') }}</td>
+            <td>
+              @if (s.active) {
+                <span class="badge badge--success">Активен</span>
+              } @else {
+                <span class="badge badge--muted">Неактивен</span>
+              }
+            </td>
+            <td>
+              <button class="btn btn--ghost btn--sm" (click)="toggleActive(s)">
+                {{ s.active ? 'Деактивировать' : 'Активировать' }}
+              </button>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" class="text-muted" style="text-align:center">Нет поставщиков</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</app-page-layout>

@@ -1,0 +1,10 @@
+h1 { font-size: 24px; font-weight: 600; }
+h2 { font-size: 20px; font-weight: 600; }
+h3 { font-size: 16px; font-weight: 600; }
+h4 { font-size: 14px; font-weight: 600; }
+
+p { color: var(--text); }
+
+.text-muted  { color: var(--text-muted); }
+.text-danger { color: var(--danger); }
+.text-success{ color: var(--success); }

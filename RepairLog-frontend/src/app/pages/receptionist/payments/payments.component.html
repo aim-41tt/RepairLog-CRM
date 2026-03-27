@@ -1,0 +1,76 @@
+<app-page-layout role="receptionist">
+  <div class="page-header">
+    <h1>Оплата</h1>
+    <a class="btn btn--ghost" routerLink="/receptionist">Назад</a>
+  </div>
+
+  <div class="toolbar">
+    <input type="search" placeholder="Номер заявки (RO-...)" style="flex:1;max-width:400px"
+      [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value)" (keyup.enter)="search()" />
+    <button class="btn btn--primary" (click)="search()">Найти</button>
+  </div>
+
+  @if (order()) {
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">{{ order()!.orderNumber }}</div>
+      <p>Клиент: <strong>{{ order()!.clientFullName }}</strong></p>
+      <p>Устройство: {{ order()!.deviceDescription }}</p>
+      <p>Статус: <span class="badge badge--info">{{ order()!.currentStatusName }}</span></p>
+      <p>Оплата: <span class="badge" [class]="paymentStatusBadge(order()!.paymentStatus)">
+        {{ paymentStatusLabel(order()!.paymentStatus) }}</span>
+      </p>
+    </div>
+  }
+
+  @if (receipt()) {
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Квитанция</div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Описание</th><th>Цена</th><th>Исполнитель</th></tr></thead>
+          <tbody>
+            @for (w of receipt()!.works; track w.id) {
+              <tr>
+                <td>{{ w.description }}</td>
+                <td>{{ w.price }} ₽</td>
+                <td>{{ w.employeeName || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr><td colspan="2"><strong>Итого:</strong></td><td><strong>{{ receipt()!.totalAmount }} ₽</strong></td></tr>
+          </tfoot>
+        </table>
+      </div>
+
+      @if (!showPayForm()) {
+        <button class="btn btn--primary" style="margin-top:16px" (click)="showPayForm.set(true)">Принять оплату</button>
+      } @else {
+        <form [formGroup]="payForm" (ngSubmit)="processPayment()" style="margin-top:16px">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Сумма (₽)</label>
+              <input type="number" formControlName="paidAmount" />
+            </div>
+            <div class="form-group">
+              <label>Способ оплаты</label>
+              <select formControlName="paymentMethod">
+                <option value="CASH">Наличные</option>
+                <option value="CARD">Карта</option>
+                <option value="TRANSFER">Перевод</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button type="submit" class="btn btn--primary">Оплатить</button>
+            <button type="button" class="btn btn--ghost" (click)="showPayForm.set(false)">Отмена</button>
+          </div>
+        </form>
+      }
+    </div>
+  }
+
+  @if (!order() && searchQuery()) {
+    <div class="empty-state"><p>Заявка не найдена</p></div>
+  }
+</app-page-layout>

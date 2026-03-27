@@ -1,0 +1,206 @@
+<app-page-layout role="admin">
+  <div class="page-header">
+    <h1>Заявки на поставку</h1>
+    <a class="btn btn--ghost" routerLink="/admin">Назад</a>
+  </div>
+
+  <div class="status-filter-bar">
+    @for (s of statuses; track s) {
+      <button [class.active]="activeFilter() === s" (click)="setFilter(s)">{{ statusLabel(s) }}</button>
+    }
+  </div>
+
+  @for (r of requests(); track r.id) {
+    <div class="card" style="margin-bottom:12px">
+      <!-- Header row -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <strong>{{ r.requestNumber }}</strong>
+          <span class="badge" [class]="badgeClass(r.statusName)" style="margin-left:8px">{{ statusLabel(r.statusName) }}</span>
+          <p class="text-muted" style="margin:4px 0 0;font-size:12px">
+            Запросил: {{ r.requestedByName }} · {{ r.createdAt | date:'dd.MM.yyyy' }}
+            @if (r.supplierName) { · Поставщик: {{ r.supplierName }} }
+          </p>
+          @if (r.comment) {
+            <p class="text-muted" style="margin:2px 0 0;font-size:12px">{{ r.comment }}</p>
+          }
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn--ghost btn--sm" (click)="toggleExpand(r.id)">
+            {{ expandedId() === r.id ? 'Скрыть' : 'Подробнее' }}
+          </button>
+          @if (r.statusName === 'PENDING' || r.statusName === 'NEW' || r.statusName === 'AUTO_FORMED') {
+            <button class="btn btn--primary btn--sm" (click)="approve(r.id)">Одобрить</button>
+            <button class="btn btn--danger btn--sm" (click)="cancel(r.id)">Отмена</button>
+          }
+          @if (r.statusName === 'APPROVED') {
+            <button class="btn btn--ghost btn--sm" (click)="markOrdered(r.id)">Заказана</button>
+          }
+          @if (r.statusName === 'ORDERED') {
+            <button class="btn btn--ghost btn--sm" (click)="markInTransit(r.id)">В пути</button>
+          }
+          @if (r.statusName === 'IN_TRANSIT' || r.statusName === 'ORDERED') {
+            <button class="btn btn--primary btn--sm" (click)="markDelivered(r.id)">Доставлена</button>
+          }
+        </div>
+      </div>
+
+      <!-- Expanded details -->
+      @if (expandedId() === r.id) {
+        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+
+          <!-- Items table -->
+          <p style="font-weight:600;margin-bottom:8px">Позиции</p>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Название</th><th>Кол-во</th><th>Цена за ед.</th><th>Сумма</th><th></th></tr></thead>
+              <tbody>
+                @for (item of r.items; track item.id) {
+                  <tr>
+                    <td>{{ item.itemName }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.unitPrice ?? 0 }} &#8381;</td>
+                    <td>{{ item.totalPrice ?? 0 }} &#8381;</td>
+                    <td>
+                      @if (isEditable(r.statusName)) {
+                        <button class="btn btn--danger btn--sm" (click)="deleteItem(r.id, item.id)">Удалить</button>
+                      }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="5" class="text-muted" style="text-align:center">Нет позиций</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          @if (r.totalAmount) {
+            <p style="font-weight:600;margin-top:8px;text-align:right">Итого: {{ r.totalAmount }} &#8381;</p>
+          }
+
+          <!-- Add item form -->
+          @if (isEditable(r.statusName)) {
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+              <p style="font-weight:600;margin-bottom:8px">Добавить позицию</p>
+              <form [formGroup]="addItemForm" (ngSubmit)="addItem(r.id)" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+                <div class="form-group" style="flex:2"><label>Название *</label><input type="text" formControlName="itemName" /></div>
+                <div class="form-group"><label>Кол-во *</label><input type="number" formControlName="quantity" min="1" /></div>
+                <div class="form-group"><label>Цена за ед.</label><input type="number" formControlName="unitPrice" min="0" /></div>
+                <button type="submit" class="btn btn--primary btn--sm" [disabled]="addItemForm.invalid">Добавить</button>
+              </form>
+            </div>
+          }
+
+          <!-- Supplier assignment & comment -->
+          @if (isEditable(r.statusName)) {
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+              <div class="form-group">
+                <label>Поставщик</label>
+                <select (change)="assignSupplier(r.id, $event)" style="min-width:200px">
+                  <option value="0">{{ r.supplierName || 'Выберите...' }}</option>
+                  @for (s of suppliers(); track s.id) {
+                    <option [value]="s.id" [selected]="s.id === r.supplierId">{{ s.name }}</option>
+                  }
+                </select>
+              </div>
+              <div class="form-group" style="flex:1">
+                <label>Комментарий</label>
+                <input type="text" [value]="r.comment ?? ''" (blur)="updateComment(r.id, $event)" placeholder="Добавить комментарий..." />
+              </div>
+            </div>
+          }
+
+          <!-- Payments section -->
+          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <p style="font-weight:600;margin:0">Оплаты</p>
+              <button class="btn btn--ghost btn--sm" (click)="showPaymentForm.set(!showPaymentForm())">
+                {{ showPaymentForm() ? 'Отмена' : '+ Записать оплату' }}
+              </button>
+            </div>
+
+            @if (showPaymentForm()) {
+              <form [formGroup]="paymentForm" (ngSubmit)="addPayment(r.id)" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
+                <div class="form-group"><label>Сумма *</label><input type="number" formControlName="amount" min="0.01" step="0.01" /></div>
+                <div class="form-group">
+                  <label>Способ *</label>
+                  <select formControlName="method">
+                    @for (m of paymentMethods; track m) {
+                      <option [value]="m">{{ paymentMethodLabel(m) }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="form-group" style="flex:1"><label>Примечание</label><input type="text" formControlName="note" /></div>
+                <button type="submit" class="btn btn--primary btn--sm" [disabled]="paymentForm.invalid">Записать</button>
+              </form>
+            }
+
+            @if (payments().length > 0) {
+              <div class="table-wrapper">
+                <table>
+                  <thead><tr><th>Дата</th><th>Сумма</th><th>Способ</th><th>Кто</th><th>Примечание</th></tr></thead>
+                  <tbody>
+                    @for (p of payments(); track p.id) {
+                      <tr>
+                        <td>{{ p.paidAt | date:'dd.MM.yyyy HH:mm' }}</td>
+                        <td>{{ p.paidAmount }} &#8381;</td>
+                        <td>{{ paymentMethodLabel(p.paymentMethod) }}</td>
+                        <td>{{ p.paidByName }}</td>
+                        <td>{{ p.comment || '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <p class="text-muted" style="font-size:13px">Нет записей об оплате</p>
+            }
+          </div>
+
+          <!-- Invoices section -->
+          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <p style="font-weight:600;margin:0">Счета-фактуры</p>
+              <button class="btn btn--ghost btn--sm" (click)="showInvoiceForm.set(!showInvoiceForm())">
+                {{ showInvoiceForm() ? 'Отмена' : '+ Добавить счёт' }}
+              </button>
+            </div>
+
+            @if (showInvoiceForm()) {
+              <form [formGroup]="invoiceForm" (ngSubmit)="addInvoice(r.id)" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
+                <div class="form-group"><label>Номер счёта *</label><input type="text" formControlName="invoiceNumber" /></div>
+                <div class="form-group"><label>Сумма *</label><input type="number" formControlName="amount" min="0.01" step="0.01" /></div>
+                <div class="form-group"><label>Дата выставления *</label><input type="date" formControlName="issuedAt" /></div>
+                <button type="submit" class="btn btn--primary btn--sm" [disabled]="invoiceForm.invalid">Добавить</button>
+              </form>
+            }
+
+            @if (invoices().length > 0) {
+              <div class="table-wrapper">
+                <table>
+                  <thead><tr><th>Номер</th><th>Сумма</th><th>Дата</th><th>Статус</th><th>Поставщик</th></tr></thead>
+                  <tbody>
+                    @for (inv of invoices(); track inv.id) {
+                      <tr>
+                        <td>{{ inv.invoiceNumber }}</td>
+                        <td>{{ inv.totalAmount }} &#8381;</td>
+                        <td>{{ inv.invoiceDate | date:'dd.MM.yyyy' }}</td>
+                        <td><span class="badge" [class]="inv.status === 'PAID' ? 'badge--success' : inv.status === 'OVERDUE' ? 'badge--danger' : 'badge--muted'">{{ inv.status }}</span></td>
+                        <td>{{ inv.supplierName }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <p class="text-muted" style="font-size:13px">Нет счетов</p>
+            }
+          </div>
+
+        </div>
+      }
+    </div>
+  } @empty {
+    <div class="empty-state"><p>Нет заявок</p></div>
+  }
+</app-page-layout>

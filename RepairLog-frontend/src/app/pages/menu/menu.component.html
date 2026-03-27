@@ -1,0 +1,16 @@
+<app-page-layout role="base">
+  <div class="page-header">
+    <h1>Выберите рабочее место</h1>
+  </div>
+
+  <div class="card-grid">
+    @for (card of cards(); track card.role) {
+      <app-nav-card
+        [title]="card.title"
+        [description]="card.description"
+        [icon]="card.icon"
+        [route]="card.route"
+      />
+    }
+  </div>
+</app-page-layout>

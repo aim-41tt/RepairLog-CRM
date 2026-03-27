@@ -1,0 +1,65 @@
+@use 'variables' as *;
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: $gap-xs;
+  padding: 7px 16px;
+  border-radius: $radius-sm;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity $transition-fast, background $transition-fast;
+  border: 1px solid transparent;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &:hover:not(:disabled) { opacity: 0.88; }
+
+  &--primary {
+    background: #1976d2;
+    color: #fff;
+  }
+
+  &--danger {
+    background: var(--danger);
+    color: #fff;
+  }
+
+  &--success {
+    background: var(--success);
+    color: #fff;
+  }
+
+  &--ghost {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text);
+
+    &:hover:not(:disabled) {
+      background: var(--bg-muted);
+      opacity: 1;
+    }
+  }
+
+  &--sm {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+
+  &--icon {
+    padding: 6px;
+    width: 32px;
+    height: 32px;
+    justify-content: center;
+  }
+}
+
+.btn-group {
+  display: flex;
+  gap: $gap-sm;
+  flex-wrap: wrap;
+}

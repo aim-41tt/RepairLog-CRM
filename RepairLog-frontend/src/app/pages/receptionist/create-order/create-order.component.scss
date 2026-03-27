@@ -1,0 +1,30 @@
+.dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px var(--shadow-md);
+  z-index: 10;
+}
+
+.dropdown-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--bg-soft);
+  }
+}
+
+@media print {
+  :host ::ng-deep .page-wrapper > *:not(main) { display: none !important; }
+  :host ::ng-deep .tabs { display: none !important; }
+  :host ::ng-deep .page-header { display: none !important; }
+  .no-print { display: none !important; }
+}

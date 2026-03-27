@@ -1,0 +1,7 @@
+<a class="card card--clickable nav-card" [routerLink]="route">
+  <img class="nav-card__icon" [src]="icon" [alt]="title" />
+  <span class="nav-card__title">{{ title }}</span>
+  @if (description) {
+    <small class="nav-card__desc">{{ description }}</small>
+  }
+</a>

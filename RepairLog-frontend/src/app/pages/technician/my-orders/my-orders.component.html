@@ -1,0 +1,30 @@
+<app-page-layout role="technician">
+  <div class="page-header">
+    <h1>Мои заявки</h1>
+    <a class="btn btn--ghost" routerLink="/technician">Назад</a>
+  </div>
+
+  @if (loading()) {
+    <p class="text-muted">Загрузка...</p>
+  } @else {
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Номер</th><th>Клиент</th><th>Устройство</th><th>Статус</th><th>Приоритет</th><th></th></tr></thead>
+        <tbody>
+          @for (o of orders(); track o.id) {
+            <tr>
+              <td>{{ o.orderNumber }}</td>
+              <td>{{ o.clientFullName }}</td>
+              <td>{{ o.deviceDescription }}</td>
+              <td><span class="badge badge--info">{{ o.currentStatusName }}</span></td>
+              <td><span class="badge badge--info">{{ o.priorityName }}</span></td>
+              <td><a class="btn btn--ghost btn--sm" [routerLink]="['/technician/orders', o.id]">Открыть</a></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="text-muted" style="text-align:center">Нет заявок</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</app-page-layout>

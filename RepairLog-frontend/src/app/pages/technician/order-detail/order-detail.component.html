@@ -1,0 +1,153 @@
+<app-page-layout role="technician">
+  @if (loading()) {
+    <p class="text-muted">Загрузка...</p>
+  } @else if (order()) {
+    <div class="page-header">
+      <div>
+        <h1>{{ order()!.orderNumber }}</h1>
+        <p class="text-muted">{{ order()!.clientFullName }} — {{ order()!.deviceDescription }}</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select #statusSelect (change)="changeStatus(+$any($event.target).value, statusSelect)" style="padding:6px 10px;border-radius:4px;border:1px solid var(--border)">
+          <option value="0">Изменить статус...</option>
+          @for (s of statuses(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
+        </select>
+        <a class="btn btn--ghost" routerLink="/technician/my-orders">Назад</a>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <span class="tab" [class.active]="activeTab() === 'info'" (click)="setTab('info')">Информация</span>
+      <span class="tab" [class.active]="activeTab() === 'diagnostics'" (click)="setTab('diagnostics')">Диагностика</span>
+      <span class="tab" [class.active]="activeTab() === 'works'" (click)="setTab('works')">Работы</span>
+      <span class="tab" [class.active]="activeTab() === 'materials'" (click)="setTab('materials')">Материалы</span>
+    </div>
+
+    <!-- Info tab -->
+    @if (activeTab() === 'info') {
+      <div class="card">
+        <div class="form-row">
+          <div><p class="text-muted" style="font-size:12px">Статус</p><p><span class="badge badge--info">{{ order()!.currentStatusName }}</span></p></div>
+          <div><p class="text-muted" style="font-size:12px">Приоритет</p><p><span class="badge badge--info">{{ order()!.priorityName }}</span></p></div>
+          <div><p class="text-muted" style="font-size:12px">Создана</p><p>{{ order()!.createdAt | date:'dd.MM.yyyy HH:mm' }}</p></div>
+        </div>
+        <p style="margin-top:16px"><strong>Описание:</strong> {{ order()!.clientComplaint }}</p>
+      </div>
+
+      @if (diagnostics().length) {
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">Результаты диагностики</div>
+          @for (d of diagnostics(); track d.id) {
+            <div style="margin-bottom:12px">
+              <p><strong>{{ d.description }}</strong>@if (d.solution) { — {{ d.solution }}}</p>
+              <p class="text-muted" style="font-size:12px;margin-top:2px">{{ d.performedByName }} · {{ d.createdAt | date:'dd.MM.yyyy HH:mm' }}</p>
+            </div>
+          }
+        </div>
+      }
+
+      @if (works().length) {
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">Выполненные работы</div>
+          @for (w of works(); track w.id) {
+            <p>{{ w.description }} — <strong>{{ w.price }} ₽</strong></p>
+          }
+        </div>
+      }
+
+      @if (statusHistory().length) {
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">История статусов</div>
+          @for (h of statusHistory(); track h.id) {
+            <div style="margin-bottom:8px;padding-left:16px;border-left:3px solid var(--border)">
+              <p><span class="badge badge--info">{{ h.statusName }}</span></p>
+              <p class="text-muted" style="font-size:12px;margin-top:2px">{{ h.changedByName }} · {{ h.changedAt | date:'dd.MM.yyyy HH:mm' }}</p>
+              @if (h.comment) { <p style="font-size:13px;margin-top:2px">{{ h.comment }}</p> }
+            </div>
+          }
+        </div>
+      }
+    }
+
+    <!-- Diagnostics tab -->
+    @if (activeTab() === 'diagnostics') {
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">{{ editingDiagId() !== null ? 'Редактировать диагностику' : 'Добавить диагностику' }}</div>
+        <form [formGroup]="diagForm" (ngSubmit)="submitDiag()">
+          <div class="form-row">
+            <div class="form-group" style="flex:2"><label>Описание</label><input type="text" formControlName="description" /></div>
+            <div class="form-group"><label>Решение</label><input type="text" formControlName="solution" /></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button type="submit" class="btn btn--primary">{{ editingDiagId() !== null ? 'Сохранить' : 'Добавить' }}</button>
+            @if (editingDiagId() !== null) {
+              <button type="button" class="btn btn--ghost" (click)="cancelEditDiag()">Отмена</button>
+            }
+          </div>
+        </form>
+      </div>
+      @for (d of diagnostics(); track d.id) {
+        <div class="card" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <strong>{{ d.description }}</strong> — <span class="text-muted">{{ d.solution }}</span>
+            <p class="text-muted" style="font-size:12px;margin:4px 0 0">{{ d.createdAt | date:'dd.MM.yyyy HH:mm' }} · {{ d.performedByName }}</p>
+          </div>
+          <button class="btn btn--ghost btn--sm" (click)="startEditDiag(d)">Редактировать</button>
+        </div>
+      } @empty {
+        <div class="empty-state"><p>Нет диагностики</p></div>
+      }
+    }
+
+    <!-- Works tab -->
+    @if (activeTab() === 'works') {
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Добавить работу</div>
+        <form [formGroup]="workForm" (ngSubmit)="submitWork()">
+          <div class="form-row">
+            <div class="form-group" style="flex:2"><label>Описание работы</label><input type="text" formControlName="description" /></div>
+            <div class="form-group"><label>Цена (₽)</label><input type="number" formControlName="price" /></div>
+          </div>
+          <button type="submit" class="btn btn--primary" style="margin-top:8px">Добавить</button>
+        </form>
+      </div>
+      @for (w of works(); track w.id) {
+        <div class="card" style="margin-bottom:8px">
+          <strong>{{ w.description }}</strong> — <span class="text-muted">{{ w.price }} ₽</span>
+        </div>
+      } @empty {
+        <div class="empty-state"><p>Нет выполненных работ</p></div>
+      }
+    }
+
+    <!-- Materials tab -->
+    @if (activeTab() === 'materials') {
+      <div class="toolbar">
+        <input type="search" placeholder="Поиск по складу..." style="flex:1;max-width:400px"
+          [value]="inventorySearch()" (input)="inventorySearch.set($any($event.target).value)" (keyup.enter)="searchInventory()" />
+        <button class="btn btn--primary" (click)="searchInventory()">Найти</button>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Название</th><th>Кол-во</th><th>Цена</th><th>Статус</th><th>Расход</th></tr></thead>
+          <tbody>
+            @for (item of inventory(); track item.id) {
+              <tr>
+                <td>{{ item.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.unitPrice }} ₽</td>
+                <td>@if (item.stockStatus === 'LOW_STOCK') { <span class="badge badge--warning">Мало</span> }</td>
+                <td style="display:flex;gap:6px;align-items:center">
+                  <input type="number" [value]="consumeQty()" (input)="consumeQty.set(+$any($event.target).value)" style="width:60px" min="1" />
+                  <button class="btn btn--ghost btn--sm" (click)="consume(item)">Списать</button>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="text-muted" style="text-align:center">Введите запрос для поиска</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+</app-page-layout>

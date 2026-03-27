@@ -1,1 +1,17 @@
-/* You can add global styles to this file, and also import other style files */
+@use 'styles/variables' as *;
+@use 'styles/reset';
+@use 'styles/typography';
+@use 'styles/buttons';
+@use 'styles/forms';
+@use 'styles/tables';
+@use 'styles/cards';
+@use 'styles/layout';
+@use 'styles/navbar';
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, 180px);
+  gap: $gap-lg;
+  justify-content: center;
+  padding: $gap-xl 0;
+}

@@ -1,0 +1,15 @@
+@use 'variables' as *;
+
+// Role-based navbar background + accent color for page content
+.role-admin {
+  --navbar-bg: #{$admin-color};
+  --role-color: #{$admin-color};
+}
+.role-technician {
+  --navbar-bg: #{$technician-color};
+  --role-color: #{$technician-color};
+}
+.role-receptionist {
+  --navbar-bg: #{$receptionist-color};
+  --role-color: #{$receptionist-color};
+}

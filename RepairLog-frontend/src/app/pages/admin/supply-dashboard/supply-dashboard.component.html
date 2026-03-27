@@ -1,0 +1,57 @@
+<app-page-layout role="admin">
+  <div class="page-header">
+    <h1>Дашборд снабжения</h1>
+    <a class="btn btn--ghost" routerLink="/admin">Назад</a>
+  </div>
+
+  @if (loading()) {
+    <p class="text-muted">Загрузка...</p>
+  }
+
+  @if (dashboard(); as d) {
+    <div class="dashboard-grid">
+      <div class="metric-card">
+        <div class="metric-value">{{ d.totalActiveRequests }}</div>
+        <div class="metric-label">Активных заявок</div>
+      </div>
+      <div class="metric-card metric-card--warning">
+        <div class="metric-value">{{ d.pendingApprovalCount }}</div>
+        <div class="metric-label">Ожидают одобрения</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">{{ d.autoFormedCount }}</div>
+        <div class="metric-label">Авто-сформированных</div>
+      </div>
+      <div class="metric-card metric-card--info">
+        <div class="metric-value">{{ d.orderedCount }}</div>
+        <div class="metric-label">Заказано</div>
+      </div>
+      <div class="metric-card metric-card--info">
+        <div class="metric-value">{{ d.inTransitCount }}</div>
+        <div class="metric-label">В пути</div>
+      </div>
+      <div class="metric-card metric-card--danger">
+        <div class="metric-value">{{ d.overdueCount }}</div>
+        <div class="metric-label">Просрочено</div>
+      </div>
+      <div class="metric-card metric-card--danger">
+        <div class="metric-value">{{ d.lowStockItemsCount }}</div>
+        <div class="metric-label">Мало на складе</div>
+      </div>
+      <div class="metric-card metric-card--danger">
+        <div class="metric-value">{{ d.outOfStockItemsCount }}</div>
+        <div class="metric-label">Нет в наличии</div>
+      </div>
+      <div class="metric-card metric-card--accent">
+        <div class="metric-value">{{ d.totalPendingAmount | number:'1.0-0' }} &#8381;</div>
+        <div class="metric-label">Ожидаемая сумма</div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap">
+      <a class="btn btn--primary" routerLink="/admin/supply-requests">Заявки на поставку</a>
+      <a class="btn btn--ghost" routerLink="/admin/inventory">Склад</a>
+      <a class="btn btn--ghost" routerLink="/admin/supply-settings">Настройки</a>
+    </div>
+  }
+</app-page-layout>

@@ -1,0 +1,49 @@
+:host { display: block; }
+
+.navbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+  background: var(--navbar-bg, #1976d2);
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,.2);
+
+  &__brand {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  &__spacer { flex: 1; }
+
+  &__user {
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  &__theme-select {
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.3);
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    width: 120px;
+    cursor: pointer;
+
+    option { color: #fff; background: var(--navbar-bg, #1976d2); }
+    option:hover {color: #b68282;}
+  }
+
+  &__logout {
+    color: #fff;
+    border-color: rgba(255,255,255,.5);
+    white-space: nowrap;
+
+    &:hover { background: rgba(255,255,255,.15); }
+  }
+}

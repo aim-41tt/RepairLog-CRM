@@ -1,0 +1,42 @@
+<app-page-layout role="technician">
+  <div class="page-header">
+    <h1>Склад</h1>
+    <a class="btn btn--ghost" routerLink="/technician">Назад</a>
+  </div>
+
+  <div class="toolbar">
+    <input type="search" placeholder="Поиск по названию..." style="flex:1;max-width:400px"
+      [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value)" (keyup.enter)="search()" />
+    <button class="btn btn--primary" (click)="search()">Найти</button>
+    <button class="btn btn--ghost" (click)="loadLowStock()">
+      <img src="icons/bell.svg" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:4px" />
+      Низкий запас
+    </button>
+    <button class="btn btn--ghost" (click)="loadAll()">Все позиции</button>
+  </div>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Название</th><th>Кол-во</th><th>Мин. остаток</th><th>Цена</th><th>Статус</th></tr></thead>
+      <tbody>
+        @for (item of items(); track item.id) {
+          <tr>
+            <td>{{ item.name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.minStockLevel }}</td>
+            <td>{{ item.unitPrice }} ₽</td>
+            <td>
+              @if (item.stockStatus === 'LOW_STOCK') {
+                <span class="badge badge--warning">Низкий запас</span>
+              } @else {
+                <span class="badge badge--success">В норме</span>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5" class="text-muted" style="text-align:center">Нет позиций</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</app-page-layout>

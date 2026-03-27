@@ -1,0 +1,31 @@
+<app-page-layout role="admin">
+  <div class="page-header">
+    <h1>Уведомления</h1>
+    <a class="btn btn--ghost" routerLink="/admin">Назад</a>
+  </div>
+
+  @if (loading()) {
+    <p class="text-muted">Загрузка...</p>
+  } @else {
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Тип</th><th>Тема</th><th>Клиент</th><th>Заявка</th><th>Статус</th><th>Создано</th><th>Действия</th></tr></thead>
+        <tbody>
+          @for (n of notifications(); track n.id) {
+            <tr>
+              <td><span class="badge badge--info">{{ n.type }}</span></td>
+              <td>{{ n.subject || n.messageBody || '—' }}</td>
+              <td>{{ n.clientName || '—' }}</td>
+              <td>{{ n.orderNumber || '—' }}</td>
+              <td><span class="badge badge--muted">{{ n.status }}</span></td>
+              <td>{{ n.createdAt | date:'dd.MM.yyyy HH:mm' }}</td>
+              <td><button class="btn btn--ghost btn--sm" (click)="markSent(n.id)">Отметить отправленным</button></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="text-muted" style="text-align:center">Нет ожидающих уведомлений</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</app-page-layout>

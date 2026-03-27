@@ -1,0 +1,88 @@
+<app-page-layout role="admin">
+  <div class="page-header">
+    <h1>Сотрудники</h1>
+    <div>
+      <a class="btn btn--ghost" routerLink="/admin">Назад</a>
+      <button class="btn btn--primary" style="margin-left:8px" (click)="openCreate()">Добавить</button>
+    </div>
+  </div>
+
+  @if (showForm()) {
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-title">{{ editId() ? 'Редактировать' : 'Новый сотрудник' }}</div>
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <div class="form-row">
+          <div class="form-group"><label>Фамилия *</label><input type="text" formControlName="surname" /></div>
+          <div class="form-group"><label>Имя *</label><input type="text" formControlName="name" /></div>
+          <div class="form-group"><label>Отчество</label><input type="text" formControlName="patronymic" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Дата рождения *</label><input type="date" formControlName="dateBirth" /></div>
+          <div class="form-group"><label>Логин *</label><input type="text" formControlName="login" /></div>
+          <div class="form-group"><label>Пароль</label><input type="password" formControlName="password" /></div>
+        </div>
+        <div class="form-group" style="margin-top:12px">
+          <label>Роли *</label>
+          <div style="display:flex;gap:16px;margin-top:4px">
+            @for (r of roles; track r) {
+              <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer">
+                <input type="checkbox" [checked]="hasFormRole(r)" (change)="toggleRole(r)" />
+                {{ roleLabel(r) }}
+              </label>
+            }
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button type="submit" class="btn btn--primary">Сохранить</button>
+          <button type="button" class="btn btn--ghost" (click)="showForm.set(false)">Отмена</button>
+        </div>
+      </form>
+    </div>
+  }
+
+  @if (loading()) {
+    <p class="text-muted">Загрузка...</p>
+  } @else {
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Логин</th><th>ФИО</th><th>Роли</th><th>Статус</th><th>Действия</th></tr></thead>
+        <tbody>
+          @for (emp of employees(); track emp.id) {
+            <tr>
+              <td>{{ emp.login }}</td>
+              <td>{{ emp.fullName }}</td>
+              <td>{{ emp.roles.join(', ') }}</td>
+              <td>
+                @if (emp.blocked) {
+                  <span class="badge badge--danger">Заблокирован</span>
+                } @else {
+                  <span class="badge badge--success">Активен</span>
+                }
+              </td>
+              <td>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn--ghost btn--sm" (click)="openEdit(emp)">Редактировать</button>
+                  <button class="btn btn--ghost btn--sm" (click)="toggleBlock(emp)"
+                    [disabled]="emp.id === currentUserId()" [title]="emp.id === currentUserId() ? 'Нельзя заблокировать себя' : ''">
+                    {{ emp.blocked ? 'Разблокировать' : 'Заблокировать' }}
+                  </button>
+                  <button class="btn btn--ghost btn--sm" (click)="terminateSession(emp)">Сбросить сессию</button>
+                  <button class="btn btn--ghost btn--sm" (click)="openPasswordChange(emp.id)">Сменить пароль</button>
+                </div>
+                @if (passwordChangeId() === emp.id) {
+                  <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+                    <input type="password" placeholder="Новый пароль" [ngModel]="newPassword()" (ngModelChange)="newPassword.set($event)" style="width:180px" />
+                    <button class="btn btn--primary btn--sm" (click)="changePassword()" [disabled]="!newPassword()">Сохранить</button>
+                    <button class="btn btn--ghost btn--sm" (click)="passwordChangeId.set(null)">Отмена</button>
+                  </div>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5" class="text-muted" style="text-align:center">Нет сотрудников</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</app-page-layout>

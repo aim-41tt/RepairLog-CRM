@@ -1,0 +1,13 @@
+<app-page-layout role="admin">
+  <div class="page-header"><h1>Администратор</h1></div>
+  <div class="card-grid">
+    <app-nav-card title="Сотрудники"          icon="icons/users.svg"     route="/admin/employees"      description="Управление персоналом" />
+    <app-nav-card title="Склад"               icon="icons/warehouse.svg" route="/admin/inventory"      description="Товарный учёт" />
+    <app-nav-card title="Поставщики"          icon="icons/truck.svg"     route="/admin/suppliers"      description="База поставщиков" />
+    <app-nav-card title="Заявки на поставку"  icon="icons/cart.svg"      route="/admin/supply-requests" description="Управление закупками" />
+    <app-nav-card title="Дашборд снабжения"   icon="icons/cart.svg"      route="/admin/supply-dashboard" description="Метрики и статистика" />
+    <app-nav-card title="Настройки снабжения" icon="icons/logs.svg"      route="/admin/supply-settings"  description="Параметры закупок" />
+    <app-nav-card title="Уведомления"         icon="icons/bell.svg"      route="/admin/notifications"  description="Исходящие сообщения" />
+    <app-nav-card title="Аудит (152-ФЗ)"      icon="icons/logs.svg"      route="/admin/audit"          description="Журнал действий" />
+  </div>
+</app-page-layout>

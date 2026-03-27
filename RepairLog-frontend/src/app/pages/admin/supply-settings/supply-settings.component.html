@@ -1,0 +1,49 @@
+<app-page-layout role="admin">
+  <div class="page-header">
+    <h1>Настройки снабжения</h1>
+    <a class="btn btn--ghost" routerLink="/admin">Назад</a>
+  </div>
+
+  @if (loading()) {
+    <p class="text-muted">Загрузка...</p>
+  }
+
+  @if (settings().length > 0) {
+    <div class="settings-list">
+      @for (s of settings(); track s.settingKey) {
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-key">{{ settingLabel(s.settingKey) }}</div>
+            @if (s.description) {
+              <div class="setting-desc">{{ s.description }}</div>
+            }
+            @if (s.modifiedByName) {
+              <div class="setting-meta">
+                Изменено: {{ s.modifiedByName }}
+                @if (s.lastModifiedAt) {
+                  · {{ s.lastModifiedAt }}
+                }
+              </div>
+            }
+          </div>
+          <div class="setting-value">
+            @if (editingKey() === s.settingKey) {
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="text" [value]="editValue()" (input)="onValueChange($event)" style="min-width:180px" />
+                <button class="btn btn--primary btn--sm" (click)="saveEdit(s.settingKey)">Сохранить</button>
+                <button class="btn btn--ghost btn--sm" (click)="cancelEdit()">Отмена</button>
+              </div>
+            } @else {
+              <div style="display:flex;gap:8px;align-items:center">
+                <code>{{ s.settingValue }}</code>
+                <button class="btn btn--ghost btn--sm" (click)="startEdit(s)">Изменить</button>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  } @else if (!loading()) {
+    <div class="empty-state"><p>Нет настроек</p></div>
+  }
+</app-page-layout>
