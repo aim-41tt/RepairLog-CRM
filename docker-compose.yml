@@ -182,6 +182,20 @@ services:
     networks:
       - repairlog-net
 
+  # --------------------------------------------------------------------------
+  # Frontend — Angular dev server
+  # --------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./RepairLog-frontend
+      dockerfile: Dockerfile
+    container_name: repairlog-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-4200}:4200"
+    networks:
+      - repairlog-net
+
 # ============================================================================
 # Volumes — данные переживают docker-compose down
 # Для полной очистки: docker-compose down -v
