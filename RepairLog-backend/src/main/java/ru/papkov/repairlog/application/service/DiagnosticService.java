@@ -80,6 +80,21 @@ public class DiagnosticService {
         return toResponse(saved);
     }
 
+    /**
+     * Обновление результата диагностики (TECHNICIAN).
+     */
+    @Transactional
+    public DiagnosticResponse update(Long diagnosticId, UpdateDiagnosticRequest request, String updatedByLogin) {
+        Diagnostic diag = diagnosticRepository.findById(diagnosticId)
+                .orElseThrow(() -> new EntityNotFoundException("Диагностика не найдена: " + diagnosticId));
+
+        diag.setDescription(request.getDescription());
+        diag.setSolution(request.getSolution());
+
+        Diagnostic saved = diagnosticRepository.save(diag);
+        return toResponse(saved);
+    }
+
     private DiagnosticResponse toResponse(Diagnostic d) {
         DiagnosticResponse r = new DiagnosticResponse();
         r.setId(d.getId());

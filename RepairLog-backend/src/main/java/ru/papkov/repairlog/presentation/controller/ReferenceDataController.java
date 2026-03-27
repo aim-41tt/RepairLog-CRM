@@ -7,6 +7,10 @@ import org.springframework.web.bind.annotation.*;
 import ru.papkov.repairlog.domain.model.*;
 import ru.papkov.repairlog.domain.repository.*;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.springframework.http.HttpStatus;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -60,6 +64,16 @@ public class ReferenceDataController {
                 .collect(Collectors.toList()));
     }
 
+    @PostMapping("/brands")
+    @Operation(summary = "Создать бренд")
+    public ResponseEntity<Map<String, Object>> createBrand(@Valid @RequestBody CreateNameRequest request) {
+        Brand brand = new Brand();
+        brand.setName(request.getName().trim());
+        brand = brandRepository.save(brand);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of("id", brand.getId(), "name", brand.getName()));
+    }
+
     @GetMapping("/brands/{brandId}/models")
     @Operation(summary = "Модели по бренду")
     public ResponseEntity<List<Map<String, Object>>> getModelsByBrand(@PathVariable Long brandId) {
@@ -69,6 +83,30 @@ public class ReferenceDataController {
         return ResponseEntity.ok(modelRepository.findByBrand(brand).stream()
                 .map(m -> Map.<String, Object>of("id", m.getId(), "name", m.getName()))
                 .collect(Collectors.toList()));
+    }
+
+    @PostMapping("/brands/{brandId}/models")
+    @Operation(summary = "Создать модель для бренда")
+    public ResponseEntity<Map<String, Object>> createModel(@PathVariable Long brandId,
+                                                            @Valid @RequestBody CreateNameRequest request) {
+        Brand brand = brandRepository.findById(brandId)
+                .orElseThrow(() -> new ru.papkov.repairlog.domain.exception.EntityNotFoundException(
+                        "Бренд с id=" + brandId + " не найден"));
+        ru.papkov.repairlog.domain.model.Model model = new ru.papkov.repairlog.domain.model.Model();
+        model.setName(request.getName().trim());
+        model.setBrand(brand);
+        model = modelRepository.save(model);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of("id", model.getId(), "name", model.getName()));
+    }
+
+    /** DTO для создания именованного справочного объекта. */
+    public static class CreateNameRequest {
+        @NotBlank(message = "Название не может быть пустым")
+        @Size(max = 100, message = "Название не может превышать 100 символов")
+        private String name;
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
     }
 
     @GetMapping("/repair-statuses")

@@ -11,6 +11,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import ru.papkov.repairlog.application.dto.client.*;
 import ru.papkov.repairlog.application.dto.device.*;
+import ru.papkov.repairlog.application.dto.diagnostic.DiagnosticResponse;
 import ru.papkov.repairlog.application.dto.order.*;
 import ru.papkov.repairlog.application.dto.receipt.*;
 import ru.papkov.repairlog.application.service.*;
@@ -34,15 +35,18 @@ public class ReceptionistController {
     private final DeviceService deviceService;
     private final RepairOrderService repairOrderService;
     private final ReceiptService receiptService;
+    private final DiagnosticService diagnosticService;
 
     public ReceptionistController(ClientService clientService,
                                   DeviceService deviceService,
                                   RepairOrderService repairOrderService,
-                                  ReceiptService receiptService) {
+                                  ReceiptService receiptService,
+                                  DiagnosticService diagnosticService) {
         this.clientService = clientService;
         this.deviceService = deviceService;
         this.repairOrderService = repairOrderService;
         this.receiptService = receiptService;
+        this.diagnosticService = diagnosticService;
     }
 
     // ========== Клиенты ==========
@@ -114,12 +118,30 @@ public class ReceptionistController {
         return ResponseEntity.ok(repairOrderService.getByOrderNumber(orderNumber));
     }
 
+    @GetMapping("/orders/search/multi")
+    @Operation(summary = "Поиск заказов по нескольким полям (номер, фамилия, телефон, серийный номер)")
+    public ResponseEntity<List<RepairOrderResponse>> searchMulti(@RequestParam String query) {
+        return ResponseEntity.ok(repairOrderService.searchMultiField(query));
+    }
+
     @PostMapping("/orders/{id}/status")
     @Operation(summary = "Изменить статус заказа (при выдаче)")
     public ResponseEntity<RepairOrderResponse> changeStatus(@PathVariable Long id,
                                                              @Valid @RequestBody ChangeStatusRequest request,
                                                              @AuthenticationPrincipal UserDetails user) {
         return ResponseEntity.ok(repairOrderService.changeStatus(id, request, user.getUsername()));
+    }
+
+    @GetMapping("/orders/{id}/diagnostics")
+    @Operation(summary = "Получить диагностику заказа")
+    public ResponseEntity<DiagnosticResponse> getOrderDiagnostics(@PathVariable Long id) {
+        return ResponseEntity.ok(diagnosticService.getByOrderId(id));
+    }
+
+    @GetMapping("/orders/{id}/status-history")
+    @Operation(summary = "История статусов заказа")
+    public ResponseEntity<List<StatusHistoryResponse>> getStatusHistory(@PathVariable Long id) {
+        return ResponseEntity.ok(repairOrderService.getStatusHistory(id));
     }
 
     // ========== Чеки и оплата ==========

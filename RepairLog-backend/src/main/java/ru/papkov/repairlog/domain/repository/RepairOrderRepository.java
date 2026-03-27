@@ -82,4 +82,21 @@ public interface RepairOrderRepository extends JpaRepository<RepairOrder, Long> 
     long countByCurrentStatus(RepairStatus status);
     
     long countByAssignedMasterAndActualCompletionDateIsNull(Employee master);
+
+    @Query("SELECT DISTINCT ro FROM RepairOrder ro " +
+           "LEFT JOIN FETCH ro.client c " +
+           "LEFT JOIN FETCH ro.device d " +
+           "LEFT JOIN FETCH d.deviceType " +
+           "LEFT JOIN FETCH d.model m " +
+           "LEFT JOIN FETCH m.brand " +
+           "LEFT JOIN FETCH ro.acceptedBy " +
+           "LEFT JOIN FETCH ro.assignedMaster " +
+           "LEFT JOIN FETCH ro.currentStatus " +
+           "LEFT JOIN FETCH ro.priority " +
+           "WHERE ro.orderNumber LIKE %:query% " +
+           "OR LOWER(c.surname) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR c.phone LIKE %:query% " +
+           "OR LOWER(d.serialNumber) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "ORDER BY ro.createdAt DESC")
+    List<RepairOrder> searchMultiField(@Param("query") String query);
 }

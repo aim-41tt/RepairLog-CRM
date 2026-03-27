@@ -183,7 +183,7 @@ public class AuthenticationService {
         List<String> roles = employee.getRoles().stream()
                 .map(r -> r.getName()).collect(Collectors.toList());
 
-        return new LoginResponse(token, employee.getFullName(), roles);
+        return new LoginResponse(token, employee.getId(), employee.getFullName(), roles);
     }
 
     /**

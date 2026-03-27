@@ -1,5 +1,6 @@
 package ru.papkov.repairlog.application.service;
 
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.papkov.repairlog.application.dto.order.*;
@@ -28,6 +29,7 @@ public class RepairOrderService {
     private final RepairPriorityRepository repairPriorityRepository;
     private final StatusHistoryRepository statusHistoryRepository;
     private final ReceiptRepository receiptRepository;
+    private final EntityManager entityManager;
 
     public RepairOrderService(RepairOrderRepository repairOrderRepository,
                               ClientRepository clientRepository,
@@ -36,7 +38,8 @@ public class RepairOrderService {
                               RepairStatusRepository repairStatusRepository,
                               RepairPriorityRepository repairPriorityRepository,
                               StatusHistoryRepository statusHistoryRepository,
-                              ReceiptRepository receiptRepository) {
+                              ReceiptRepository receiptRepository,
+                              EntityManager entityManager) {
         this.repairOrderRepository = repairOrderRepository;
         this.clientRepository = clientRepository;
         this.deviceRepository = deviceRepository;
@@ -45,6 +48,7 @@ public class RepairOrderService {
         this.repairPriorityRepository = repairPriorityRepository;
         this.statusHistoryRepository = statusHistoryRepository;
         this.receiptRepository = receiptRepository;
+        this.entityManager = entityManager;
     }
 
     @Transactional(readOnly = true)
@@ -124,7 +128,10 @@ public class RepairOrderService {
             order.setPriority(priority);
         }
 
-        RepairOrder saved = repairOrderRepository.save(order);
+        RepairOrder saved = repairOrderRepository.saveAndFlush(order);
+
+        // перечитываем entity, чтобы получить orderNumber, сгенерированный триггером БД
+        entityManager.refresh(saved);
 
         // записываем в историю статусов
         recordStatusChange(saved, newStatus, acceptedBy, "Заказ создан");
@@ -180,6 +187,27 @@ public class RepairOrderService {
         recordStatusChange(saved, newStatus, changedBy, request.getComment());
 
         return toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<StatusHistoryResponse> getStatusHistory(Long orderId) {
+        RepairOrder order = findOrder(orderId);
+        return statusHistoryRepository.findByRepairOrderOrderByChangedAtDesc(order).stream()
+                .map(h -> {
+                    StatusHistoryResponse r = new StatusHistoryResponse();
+                    r.setId(h.getId());
+                    r.setStatusName(h.getStatus().getName());
+                    r.setChangedByName(h.getChangedBy().getFullName());
+                    r.setChangedAt(h.getChangedAt());
+                    r.setComment(h.getComment());
+                    return r;
+                }).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<RepairOrderResponse> searchMultiField(String query) {
+        return repairOrderRepository.searchMultiField(query).stream()
+                .map(this::toResponse).collect(Collectors.toList());
     }
 
     // ========== Helpers ==========

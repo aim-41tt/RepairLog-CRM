@@ -16,6 +16,9 @@ public class LoginResponse {
     /** Тип токена (всегда Bearer). */
     private String tokenType = "Bearer";
 
+    /** ID сотрудника. */
+    private Long employeeId;
+
     /** Полное имя сотрудника в формате "Фамилия И.О." */
     private String fullName;
 
@@ -24,8 +27,9 @@ public class LoginResponse {
 
     public LoginResponse() {}
 
-    public LoginResponse(String token, String fullName, List<String> roles) {
+    public LoginResponse(String token, Long employeeId, String fullName, List<String> roles) {
         this.token = token;
+        this.employeeId = employeeId;
         this.fullName = fullName;
         this.roles = roles;
     }
@@ -34,6 +38,8 @@ public class LoginResponse {
     public void setToken(String token) { this.token = token; }
     public String getTokenType() { return tokenType; }
     public void setTokenType(String tokenType) { this.tokenType = tokenType; }
+    public Long getEmployeeId() { return employeeId; }
+    public void setEmployeeId(Long employeeId) { this.employeeId = employeeId; }
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
     public List<String> getRoles() { return roles; }

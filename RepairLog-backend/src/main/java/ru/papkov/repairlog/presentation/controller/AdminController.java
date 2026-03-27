@@ -282,6 +282,37 @@ public class AdminController {
         return ResponseEntity.ok(supplyRequestService.assignSupplier(id, request.getSupplierId()));
     }
 
+    // ==================== Позиции заявки ====================
+
+    @PostMapping("/supply-requests/{id}/items")
+    @Operation(summary = "Добавить позицию в заявку")
+    public ResponseEntity<SupplyRequestResponse> addItem(@PathVariable Long id,
+                                                          @Valid @RequestBody CreateSupplyRequestItemRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(supplyRequestService.addItem(id, request));
+    }
+
+    @PutMapping("/supply-requests/{id}/items/{itemId}")
+    @Operation(summary = "Обновить позицию заявки")
+    public ResponseEntity<SupplyRequestResponse> updateItem(@PathVariable Long id,
+                                                             @PathVariable Long itemId,
+                                                             @Valid @RequestBody CreateSupplyRequestItemRequest request) {
+        return ResponseEntity.ok(supplyRequestService.updateItem(id, itemId, request));
+    }
+
+    @DeleteMapping("/supply-requests/{id}/items/{itemId}")
+    @Operation(summary = "Удалить позицию из заявки")
+    public ResponseEntity<SupplyRequestResponse> deleteItem(@PathVariable Long id,
+                                                             @PathVariable Long itemId) {
+        return ResponseEntity.ok(supplyRequestService.deleteItem(id, itemId));
+    }
+
+    @PutMapping("/supply-requests/{id}/comment")
+    @Operation(summary = "Обновить комментарий заявки")
+    public ResponseEntity<SupplyRequestResponse> updateComment(@PathVariable Long id,
+                                                                @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(supplyRequestService.updateComment(id, body.get("comment")));
+    }
+
     // ==================== Оплата поставщикам ====================
 
     @PostMapping("/supply-requests/{id}/payment")

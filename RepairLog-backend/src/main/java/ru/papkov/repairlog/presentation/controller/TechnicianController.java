@@ -96,6 +96,12 @@ public class TechnicianController {
         return ResponseEntity.ok(repairOrderService.changeStatus(id, request, user.getUsername()));
     }
 
+    @GetMapping("/orders/{id}/status-history")
+    @Operation(summary = "История статусов заказа")
+    public ResponseEntity<List<StatusHistoryResponse>> getStatusHistory(@PathVariable Long id) {
+        return ResponseEntity.ok(repairOrderService.getStatusHistory(id));
+    }
+
     // ========== Диагностика ==========
 
     @GetMapping("/diagnostics/order/{orderId}")
@@ -109,6 +115,14 @@ public class TechnicianController {
     public ResponseEntity<DiagnosticResponse> createDiagnostic(@Valid @RequestBody CreateDiagnosticRequest request,
                                                                 @AuthenticationPrincipal UserDetails user) {
         return ResponseEntity.status(HttpStatus.CREATED).body(diagnosticService.create(request, user.getUsername()));
+    }
+
+    @PutMapping("/diagnostics/{id}")
+    @Operation(summary = "Обновить результат диагностики")
+    public ResponseEntity<DiagnosticResponse> updateDiagnostic(@PathVariable Long id,
+                                                                @Valid @RequestBody UpdateDiagnosticRequest request,
+                                                                @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(diagnosticService.update(id, request, user.getUsername()));
     }
 
     // ========== Работы ==========

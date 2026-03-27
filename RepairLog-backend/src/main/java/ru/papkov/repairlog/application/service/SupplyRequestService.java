@@ -140,6 +140,98 @@ public class SupplyRequestService {
         return toResponse(saved);
     }
 
+    // ========== Управление позициями заявки ==========
+
+    @Transactional
+    public SupplyRequestResponse addItem(Long supplyRequestId, CreateSupplyRequestItemRequest itemReq) {
+        SupplyRequest request = findById(supplyRequestId);
+        validateEditable(request);
+
+        SupplyRequestItem item = new SupplyRequestItem();
+        item.setSupplyRequest(request);
+        item.setItemName(itemReq.getItemName());
+        item.setPartNumber(itemReq.getPartNumber());
+        item.setQuantity(itemReq.getQuantity());
+        item.setUnitPrice(itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : BigDecimal.ZERO);
+
+        if (itemReq.getInventoryItemId() != null) {
+            InventoryItem inv = inventoryItemRepository.findById(itemReq.getInventoryItemId())
+                    .orElseThrow(() -> new EntityNotFoundException("Товар не найден"));
+            item.setInventoryItem(inv);
+        }
+
+        BigDecimal lineTotal = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+        item.setTotalPrice(lineTotal);
+        supplyRequestItemRepository.save(item);
+
+        recalcTotal(request);
+        log.info("Добавлена позиция '{}' в заявку {}", itemReq.getItemName(), request.getRequestNumber());
+        return toResponse(supplyRequestRepository.save(request));
+    }
+
+    @Transactional
+    public SupplyRequestResponse updateItem(Long supplyRequestId, Long itemId, CreateSupplyRequestItemRequest itemReq) {
+        SupplyRequest request = findById(supplyRequestId);
+        validateEditable(request);
+
+        SupplyRequestItem item = supplyRequestItemRepository.findById(itemId)
+                .orElseThrow(() -> new EntityNotFoundException("Позиция не найдена: " + itemId));
+        if (!item.getSupplyRequest().getId().equals(supplyRequestId)) {
+            throw new BusinessLogicException("Позиция не принадлежит данной заявке");
+        }
+
+        item.setItemName(itemReq.getItemName());
+        item.setPartNumber(itemReq.getPartNumber());
+        item.setQuantity(itemReq.getQuantity());
+        item.setUnitPrice(itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : BigDecimal.ZERO);
+        item.setTotalPrice(item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+        supplyRequestItemRepository.save(item);
+
+        recalcTotal(request);
+        log.info("Обновлена позиция {} в заявке {}", itemId, request.getRequestNumber());
+        return toResponse(supplyRequestRepository.save(request));
+    }
+
+    @Transactional
+    public SupplyRequestResponse deleteItem(Long supplyRequestId, Long itemId) {
+        SupplyRequest request = findById(supplyRequestId);
+        validateEditable(request);
+
+        SupplyRequestItem item = supplyRequestItemRepository.findById(itemId)
+                .orElseThrow(() -> new EntityNotFoundException("Позиция не найдена: " + itemId));
+        if (!item.getSupplyRequest().getId().equals(supplyRequestId)) {
+            throw new BusinessLogicException("Позиция не принадлежит данной заявке");
+        }
+
+        supplyRequestItemRepository.delete(item);
+        request.getItems().remove(item);
+
+        recalcTotal(request);
+        log.info("Удалена позиция {} из заявки {}", itemId, request.getRequestNumber());
+        return toResponse(supplyRequestRepository.save(request));
+    }
+
+    @Transactional
+    public SupplyRequestResponse updateComment(Long id, String comment) {
+        SupplyRequest request = findById(id);
+        request.setComment(comment);
+        return toResponse(supplyRequestRepository.save(request));
+    }
+
+    private void validateEditable(SupplyRequest request) {
+        String status = request.getStatus().getName();
+        if (SupplyStatusConstants.DELIVERED.equals(status) || SupplyStatusConstants.CANCELLED.equals(status)) {
+            throw new BusinessLogicException("Нельзя изменять позиции заявки в статусе '" + status + "'");
+        }
+    }
+
+    private void recalcTotal(SupplyRequest request) {
+        BigDecimal total = request.getItems().stream()
+                .map(i -> i.getTotalPrice() != null ? i.getTotalPrice() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        request.setTotalAmount(total);
+    }
+
     // ========== Создание (авто-формирование) ==========
 
     @Transactional
