@@ -1,14 +1,24 @@
+SECOND_DIR = ./SERVER_CONFIG
+
 start:
 	docker-compose up -d
+	
+start-prod:
+	docker-compose up -d
+	docker-compose -f $(SECOND_DIR)/docker-compose.yml up -d
 
 down:
 	docker-compose down
-
+	
+down-prod:
+	docker-compose down
+	docker-compose -f $(SECOND_DIR)/docker-compose.yml down
+	
 down-v:
 	docker-compose down -v
 
 restart:
-	docker-compose down
+	make down
 	make start
 
 restart-v:
@@ -30,3 +40,7 @@ dump_db:
 
 set_dump_db:
 	cat dump_repairlog_db.sql | docker exec -i repairlog-postgres psql -U postgres repairlog_db
+	
+
+logs:
+	docker-compose logs -f document-api backend postgres frontend nginx

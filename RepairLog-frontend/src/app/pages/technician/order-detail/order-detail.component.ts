@@ -10,6 +10,7 @@ import { InventoryService } from '../../../core/services/inventory.service';
 import { ReferenceService } from '../../../core/services/reference.service';
 import { ReceiptService } from '../../../core/services/receipt.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
+import { DocumentService } from '../../../core/services/document.service';
 import { Order, StatusHistoryEntry } from '../../../core/models/order.models';
 import { Diagnostic } from '../../../core/models/diagnostic.models';
 import { WorkItem } from '../../../core/models/work.models';
@@ -37,6 +38,7 @@ export class OrderDetailComponent implements OnInit {
   private receiptService = inject(ReceiptService);
   private fb = inject(FormBuilder);
   private confirmService = inject(ConfirmService);
+  documentService = inject(DocumentService);
 
   order = signal<Order | null>(null);
   diagnostics = signal<Diagnostic[]>([]);

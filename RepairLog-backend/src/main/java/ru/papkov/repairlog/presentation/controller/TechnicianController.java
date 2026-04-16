@@ -3,7 +3,9 @@ package ru.papkov.repairlog.presentation.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -38,6 +40,7 @@ public class TechnicianController {
     private final InventoryService inventoryService;
     private final DeviceService deviceService;
     private final SupplyRequestService supplyRequestService;
+    private final DocumentService documentService;
     private final ru.papkov.repairlog.domain.repository.EmployeeRepository employeeRepository;
 
     public TechnicianController(RepairOrderService repairOrderService,
@@ -46,6 +49,7 @@ public class TechnicianController {
                                 InventoryService inventoryService,
                                 DeviceService deviceService,
                                 SupplyRequestService supplyRequestService,
+                                DocumentService documentService,
                                 ru.papkov.repairlog.domain.repository.EmployeeRepository employeeRepository) {
         this.repairOrderService = repairOrderService;
         this.diagnosticService = diagnosticService;
@@ -53,6 +57,7 @@ public class TechnicianController {
         this.inventoryService = inventoryService;
         this.deviceService = deviceService;
         this.supplyRequestService = supplyRequestService;
+        this.documentService = documentService;
         this.employeeRepository = employeeRepository;
     }
 
@@ -199,5 +204,40 @@ public class TechnicianController {
     public ResponseEntity<List<SupplyRequestResponse>> getMySupplyRequests(
             @AuthenticationPrincipal UserDetails user) {
         return ResponseEntity.ok(supplyRequestService.getByEmployee(user.getUsername()));
+    }
+
+    // ========== Документы (PDF) ==========
+
+    @GetMapping("/orders/{id}/documents/receipt")
+    @Operation(summary = "Сформировать квитанцию приёмки (PDF)")
+    public ResponseEntity<byte[]> generateReceipt(@PathVariable Long id) {
+        return buildPdfResponse(documentService.generateReceipt(id));
+    }
+
+    @GetMapping("/orders/{id}/documents/completion-act")
+    @Operation(summary = "Сформировать акт выполненных работ (PDF)")
+    public ResponseEntity<byte[]> generateCompletionAct(@PathVariable Long id) {
+        return buildPdfResponse(documentService.generateCompletionAct(id));
+    }
+
+    @GetMapping("/orders/{id}/documents/warranty-card")
+    @Operation(summary = "Сформировать гарантийный талон (PDF)")
+    public ResponseEntity<byte[]> generateWarrantyCard(@PathVariable Long id) {
+        return buildPdfResponse(documentService.generateWarrantyCard(id));
+    }
+
+    @GetMapping("/orders/{id}/documents/rejection-sheet")
+    @Operation(summary = "Сформировать отказной лист (PDF)")
+    public ResponseEntity<byte[]> generateRejectionSheet(@PathVariable Long id,
+                                                          @RequestParam String reason) {
+        return buildPdfResponse(documentService.generateRejectionSheet(id, reason));
+    }
+
+    private ResponseEntity<byte[]> buildPdfResponse(byte[] pdf) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
+                .contentType(MediaType.APPLICATION_PDF)
+                .contentLength(pdf.length)
+                .body(pdf);
     }
 }

@@ -107,7 +107,7 @@ services:
       - repairlog-net
 
   # --------------------------------------------------------------------------
-  # Kafka UI — веб-интерфейс для мониторинга Kafka (http://localhost:8090)
+  # Kafka UI — веб-интерфейс для мониторинга Kafka
   # --------------------------------------------------------------------------
   kafka-ui:
     image: obsidiandynamics/kafdrop:latest
@@ -165,6 +165,9 @@ services:
       KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
       KAFKA_NOTIFICATIONS_TOPIC: ${KAFKA_NOTIFICATIONS_TOPIC:-client-notifications}
 
+      # Document API
+      DOCUMENT_SERVICE_URL: http://document-api:8093
+
       # Порт приложения (внутри контейнера всегда 8080)
       SERVER_PORT: 8080
 
@@ -181,7 +184,7 @@ services:
         condition: service_healthy
     networks:
       - repairlog-net
-
+      - shared
   # --------------------------------------------------------------------------
   # Frontend — Angular dev server
   # --------------------------------------------------------------------------
@@ -193,6 +196,28 @@ services:
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-4200}:4200"
+    networks:
+      - repairlog-net
+      - shared
+
+  # --------------------------------------------------------------------------
+  # Document API
+  # --------------------------------------------------------------------------
+  document-api:
+    build:
+      context: ./document-api
+      dockerfile: Dockerfile
+    container_name: repairlog-document-api
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8093
+      TZ: Europe/Moscow
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8093/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - repairlog-net
 
@@ -212,3 +237,6 @@ volumes:
 networks:
   repairlog-net:
     driver: bridge
+  shared:
+    external: true
+    name: shared_network

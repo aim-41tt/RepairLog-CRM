@@ -67,6 +67,15 @@
           }
         </div>
       }
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Документы</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn--ghost" (click)="documentService.generateReceipt(+id, 'technician')">Квитанция приёмки</button>
+          <button class="btn btn--ghost" (click)="documentService.generateCompletionAct(+id, 'technician')">Акт выполненных работ</button>
+          <button class="btn btn--ghost" (click)="documentService.generateWarrantyCard(+id, 'technician')">Гарантийный талон</button>
+        </div>
+      </div>
     }
 
     <!-- Diagnostics tab -->

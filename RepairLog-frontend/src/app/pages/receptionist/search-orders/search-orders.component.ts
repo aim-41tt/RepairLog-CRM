@@ -9,6 +9,7 @@ import { RepairStatus } from '../../../core/models/reference.models';
 import { Diagnostic } from '../../../core/models/diagnostic.models';
 import { Receipt } from '../../../core/models/receipt.models';
 import { ConfirmService } from '../../../core/services/confirm.service';
+import { DocumentService } from '../../../core/services/document.service';
 
 @Component({
   selector: 'app-search-orders',
@@ -21,6 +22,7 @@ export class SearchOrdersComponent implements OnInit {
   private orderService = inject(OrderService);
   private refService = inject(ReferenceService);
   private confirmService = inject(ConfirmService);
+  documentService = inject(DocumentService);
 
   orders = signal<Order[]>([]);
   statuses = signal<RepairStatus[]>([]);

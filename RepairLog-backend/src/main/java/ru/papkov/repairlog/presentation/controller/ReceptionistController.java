@@ -9,6 +9,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import ru.papkov.repairlog.application.dto.client.*;
 import ru.papkov.repairlog.application.dto.device.*;
 import ru.papkov.repairlog.application.dto.diagnostic.DiagnosticResponse;
@@ -36,17 +38,20 @@ public class ReceptionistController {
     private final RepairOrderService repairOrderService;
     private final ReceiptService receiptService;
     private final DiagnosticService diagnosticService;
+    private final DocumentService documentService;
 
     public ReceptionistController(ClientService clientService,
                                   DeviceService deviceService,
                                   RepairOrderService repairOrderService,
                                   ReceiptService receiptService,
-                                  DiagnosticService diagnosticService) {
+                                  DiagnosticService diagnosticService,
+                                  DocumentService documentService) {
         this.clientService = clientService;
         this.deviceService = deviceService;
         this.repairOrderService = repairOrderService;
         this.receiptService = receiptService;
         this.diagnosticService = diagnosticService;
+        this.documentService = documentService;
     }
 
     // ========== Клиенты ==========
@@ -158,5 +163,40 @@ public class ReceptionistController {
                                                                @AuthenticationPrincipal UserDetails user) {
         receiptService.processPayment(request, user.getUsername());
         return ResponseEntity.ok(Map.of("message", "Оплата принята"));
+    }
+
+    // ========== Документы (PDF) ==========
+
+    @GetMapping("/orders/{id}/documents/receipt")
+    @Operation(summary = "Сформировать квитанцию приёмки (PDF)")
+    public ResponseEntity<byte[]> generateReceipt(@PathVariable Long id) {
+        return buildPdfResponse(documentService.generateReceipt(id));
+    }
+
+    @GetMapping("/orders/{id}/documents/completion-act")
+    @Operation(summary = "Сформировать акт выполненных работ (PDF)")
+    public ResponseEntity<byte[]> generateCompletionAct(@PathVariable Long id) {
+        return buildPdfResponse(documentService.generateCompletionAct(id));
+    }
+
+    @GetMapping("/orders/{id}/documents/warranty-card")
+    @Operation(summary = "Сформировать гарантийный талон (PDF)")
+    public ResponseEntity<byte[]> generateWarrantyCard(@PathVariable Long id) {
+        return buildPdfResponse(documentService.generateWarrantyCard(id));
+    }
+
+    @GetMapping("/orders/{id}/documents/rejection-sheet")
+    @Operation(summary = "Сформировать отказной лист (PDF)")
+    public ResponseEntity<byte[]> generateRejectionSheet(@PathVariable Long id,
+                                                          @RequestParam String reason) {
+        return buildPdfResponse(documentService.generateRejectionSheet(id, reason));
+    }
+
+    private ResponseEntity<byte[]> buildPdfResponse(byte[] pdf) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
+                .contentType(MediaType.APPLICATION_PDF)
+                .contentLength(pdf.length)
+                .body(pdf);
     }
 }

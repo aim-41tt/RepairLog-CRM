@@ -83,6 +83,15 @@
                   }
                 </div>
               }
+
+              <div style="grid-column:1/-1;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+                <p style="font-weight:600;margin-bottom:8px">Документы</p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button class="btn btn--ghost btn--sm" (click)="documentService.generateReceipt(order.id, 'receptionist')">Квитанция приёмки</button>
+                  <button class="btn btn--ghost btn--sm" (click)="documentService.generateCompletionAct(order.id, 'receptionist')">Акт выполненных работ</button>
+                  <button class="btn btn--ghost btn--sm" (click)="documentService.generateWarrantyCard(order.id, 'receptionist')">Гарантийный талон</button>
+                </div>
+              </div>
             </div>
           }
         </div>

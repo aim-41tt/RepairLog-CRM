@@ -1,2 +1,15 @@
 # docker
 .env
+.bat
+
+# server
+SERVER_CONFIG
+
+
+# temporary files
+*.zip
+TZ.md
+
+
+# service document-api
+document-api/*
