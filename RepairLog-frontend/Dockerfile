@@ -1,18 +1,35 @@
 # ════════════════════════════════════════════════════════════════════════════
-# CRM RepairLog Frontend — Dev Dockerfile
-# Angular 18 dev server
+# CRM RepairLog Frontend — Production Dockerfile
+# Stage 1: build Angular app (production)
+# Stage 2: serve with nginx
 # ════════════════════════════════════════════════════════════════════════════
-FROM node:20-alpine
+
+# ── Stage 1: Builder ────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Сначала копируем package*.json — npm ci закеширует зависимости
+# Cache npm dependencies separately
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
-# Копируем исходники
+# Copy sources and build
 COPY . .
+RUN npm run build -- --configuration production
 
-EXPOSE 4200
+# ── Stage 2: Runtime (nginx) ─────────────────────────────────────────────────
+FROM nginx:1.27-alpine AS runtime
 
-CMD ["npx", "ng", "serve", "--host", "0.0.0.0", "--disable-host-check"]
+# Remove default nginx config
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/repairlog.conf
+
+# Copy production build artifacts
+# Angular 18 outputs to dist/<project>/browser/
+COPY --from=builder /app/dist/repair-log-frontend/browser /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

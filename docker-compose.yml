@@ -168,6 +168,15 @@ services:
       # Document API
       DOCUMENT_SERVICE_URL: http://document-api:8093
 
+      # Реквизиты компании для PDF-документов
+      COMPANY_NAME: ${COMPANY_NAME:-Сервисный центр RepairLog}
+      COMPANY_ADDRESS: ${COMPANY_ADDRESS:-}
+      COMPANY_PHONE: ${COMPANY_PHONE:-}
+      COMPANY_EMAIL: ${COMPANY_EMAIL:-}
+      COMPANY_INN: ${COMPANY_INN:-}
+      COMPANY_SITE_URL: ${COMPANY_SITE_URL:-}
+      COMPANY_MESSENGERS: ${COMPANY_MESSENGERS:-}
+
       # Порт приложения (внутри контейнера всегда 8080)
       SERVER_PORT: 8080
 
@@ -185,8 +194,9 @@ services:
     networks:
       - repairlog-net
       - shared
+      
   # --------------------------------------------------------------------------
-  # Frontend — Angular dev server
+  # Frontend — Angular production build
   # --------------------------------------------------------------------------
   frontend:
     build:
@@ -194,8 +204,8 @@ services:
       dockerfile: Dockerfile
     container_name: repairlog-frontend
     restart: unless-stopped
-    ports:
-      - "${FRONTEND_PORT:-4200}:4200"
+    depends_on:
+      - backend
     networks:
       - repairlog-net
       - shared

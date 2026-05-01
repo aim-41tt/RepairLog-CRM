@@ -103,7 +103,7 @@ CREATE TABLE clients (
     name VARCHAR(100) NOT NULL,
     surname VARCHAR(100) NOT NULL,
     patronymic VARCHAR(100),
-    date_birth DATE NOT NULL,
+    date_birth DATE, -- B-16: optional per business rules (was NOT NULL)
     phone VARCHAR(20) NOT NULL UNIQUE
         CHECK (phone ~ '^[0-9+() -]{6,20}$'),
     email VARCHAR(100)
@@ -1447,4 +1447,20 @@ BEGIN
     RAISE NOTICE '════════════════════════════════════════════════════════';
     RAISE NOTICE 'ВАЖНО: Измените пароль администратора при первом входе!';
     RAISE NOTICE '════════════════════════════════════════════════════════';
+END $$;
+
+-- ============================================================================
+-- Idempotent migrations (safe to re-run on existing databases)
+-- ============================================================================
+
+-- B-16: clients.date_birth made optional. Drop NOT NULL if it still exists.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'clients' AND column_name = 'date_birth' AND is_nullable = 'NO'
+    ) THEN
+        ALTER TABLE clients ALTER COLUMN date_birth DROP NOT NULL;
+        RAISE NOTICE 'Migrated: clients.date_birth → nullable';
+    END IF;
 END $$;
