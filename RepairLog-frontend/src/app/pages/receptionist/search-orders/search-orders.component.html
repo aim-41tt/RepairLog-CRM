@@ -43,7 +43,7 @@
           @if (detailsLoading()) {
             <p class="text-muted">Загрузка...</p>
           } @else {
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="details-grid">
               <!-- Diagnostics -->
               <div>
                 <p style="font-weight:600;margin-bottom:8px">Диагностика</p>
@@ -72,7 +72,7 @@
               </div>
 
               @if (statusHistory().length) {
-                <div style="grid-column:1/-1;margin-top:8px">
+                <div class="details-grid__full" style="margin-top:8px">
                   <p style="font-weight:600;margin-bottom:8px">История статусов</p>
                   @for (h of statusHistory(); track h.id) {
                     <div style="margin-bottom:8px;padding-left:16px;border-left:3px solid var(--border)">
@@ -84,7 +84,7 @@
                 </div>
               }
 
-              <div style="grid-column:1/-1;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+              <div class="details-grid__full" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
                 <p style="font-weight:600;margin-bottom:8px">Документы</p>
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
                   <button class="btn btn--ghost btn--sm" (click)="documentService.generateReceipt(order.id, 'receptionist')">Квитанция приёмки</button>

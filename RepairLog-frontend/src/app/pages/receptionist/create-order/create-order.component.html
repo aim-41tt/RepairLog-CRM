@@ -40,21 +40,61 @@
           <div class="card-title">Новый клиент</div>
           <form [formGroup]="clientForm" (ngSubmit)="createClient()">
             <div class="form-row">
-              <div class="form-group"><label>Фамилия *</label><input type="text" formControlName="surname" /></div>
-              <div class="form-group"><label>Имя *</label><input type="text" formControlName="name" /></div>
+              <div class="form-group">
+                <label>Фамилия *</label>
+                <input type="text" formControlName="surname" />
+                @if (clientForm.get('surname')?.touched && clientForm.get('surname')?.errors?.['required']) {
+                  <small class="field-error">Обязательное поле</small>
+                }
+              </div>
+              <div class="form-group">
+                <label>Имя *</label>
+                <input type="text" formControlName="name" />
+                @if (clientForm.get('name')?.touched && clientForm.get('name')?.errors?.['required']) {
+                  <small class="field-error">Обязательное поле</small>
+                }
+              </div>
               <div class="form-group"><label>Отчество</label><input type="text" formControlName="patronymic" /></div>
             </div>
             <div class="form-row" style="margin-top:12px">
-              <div class="form-group"><label>Телефон *</label><input type="tel" formControlName="phone" placeholder="+7 (900) 123-45-67" (input)="formatPhone($event)" /></div>
-              <div class="form-group"><label>Дата рождения *</label><input type="date" formControlName="dateBirth" /></div>
-              <div class="form-group"><label>Email</label><input type="email" formControlName="email" /></div>
+              <div class="form-group">
+                <label>Телефон *</label>
+                <!-- B-12: type="tel" + placeholder hints format -->
+                <input type="tel" formControlName="phone" placeholder="+7 (900) 123-45-67" (input)="formatPhone($event)" />
+                @if (clientForm.get('phone')?.touched && clientForm.get('phone')?.errors?.['required']) {
+                  <small class="field-error">Обязательное поле</small>
+                }
+                @if (clientForm.get('phone')?.touched && clientForm.get('phone')?.errors?.['invalidPhone']) {
+                  <small class="field-error">Введите корректный номер телефона</small>
+                }
+              </div>
+              <div class="form-group">
+                <!-- B-16: date of birth is now optional; B-13: max = today -->
+                <label>Дата рождения</label>
+                <input type="date" formControlName="dateBirth" [max]="todayIso" />
+                @if (clientForm.get('dateBirth')?.touched && clientForm.get('dateBirth')?.errors?.['futureDate']) {
+                  <small class="field-error">Дата рождения не может быть в будущем</small>
+                }
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" formControlName="email" />
+                @if (clientForm.get('email')?.touched && clientForm.get('email')?.errors?.['email']) {
+                  <small class="field-error">Некорректный email</small>
+                }
+              </div>
             </div>
-            <div style="display:flex;gap:16px;margin-top:12px">
-              <label style="font-size:13px;display:flex;align-items:center;gap:4px">
-                <input type="checkbox" formControlName="consentGiven" /> Согласие на обработку данных
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+              <!-- B-15: consent must be explicitly checked by user (not pre-checked) -->
+              <label style="font-size:13px;display:flex;align-items:center;gap:6px">
+                <input type="checkbox" formControlName="consentGiven" />
+                <span>Согласие на обработку персональных данных <strong style="color:var(--color-danger)">*</strong></span>
               </label>
-              <label style="font-size:13px;display:flex;align-items:center;gap:4px">
-                <input type="checkbox" formControlName="notificationsEnabled" /> Уведомления
+              @if (clientForm.get('consentGiven')?.touched && clientForm.get('consentGiven')?.errors?.['required']) {
+                <small class="field-error" style="margin-left:22px">Необходимо согласие на обработку данных (152-ФЗ)</small>
+              }
+              <label style="font-size:13px;display:flex;align-items:center;gap:6px">
+                <input type="checkbox" formControlName="notificationsEnabled" /> Уведомления (SMS/Email)
               </label>
             </div>
             <div style="display:flex;gap:8px;margin-top:16px">
@@ -86,12 +126,31 @@
       <p style="margin-bottom:12px">Или зарегистрировать новое:</p>
       <form [formGroup]="deviceForm" (ngSubmit)="createNewDevice()">
         <div class="form-row">
-          <div class="form-group">
+          <!-- DeviceType: search-or-create -->
+          <div class="form-group" style="position:relative">
             <label>Тип устройства</label>
-            <select formControlName="deviceTypeId">
-              <option value="0">Выберите...</option>
-              @for (t of deviceTypes(); track t.id) { <option [value]="t.id">{{ t.name }}</option> }
-            </select>
+            <input type="text" placeholder="Введите тип..."
+              [value]="deviceTypeSearch()"
+              (input)="deviceTypeSearch.set($any($event.target).value); filterDeviceTypes()"
+              (focus)="filterDeviceTypes()" />
+            @if (filteredDeviceTypes().length && !selectedDeviceType()) {
+              <div class="dropdown-list">
+                @for (t of filteredDeviceTypes(); track t.id) {
+                  <div class="dropdown-item" (click)="pickDeviceType(t)">{{ t.name }}</div>
+                }
+              </div>
+            }
+            @if (deviceTypeSearch().trim() && !selectedDeviceType() && !filteredDeviceTypes().length) {
+              <button type="button" class="btn btn--ghost btn--sm" style="margin-top:4px" (click)="createNewDeviceType()">
+                Создать «{{ deviceTypeSearch().trim() }}»
+              </button>
+            }
+            @if (selectedDeviceType()) {
+              <button type="button" class="btn btn--ghost btn--sm" style="margin-top:4px;font-size:11px"
+                (click)="selectedDeviceType.set(null); deviceTypeSearch.set('')">
+                Изменить
+              </button>
+            }
           </div>
 
           <!-- Brand: search-or-create -->
@@ -171,17 +230,41 @@
       </p>
       <form [formGroup]="orderForm" (ngSubmit)="submitOrder()">
         <div class="form-group">
-          <label>Приоритет</label>
+          <label>Приоритет *</label>
           <select formControlName="priorityId">
             <option value="0">Выберите...</option>
             @for (p of priorities(); track p.id) { <option [value]="p.id">{{ p.name }}</option> }
           </select>
+          @if (orderForm.get('priorityId')?.touched && orderForm.get('priorityId')?.errors?.['min']) {
+            <small class="text-danger">Выберите приоритет</small>
+          }
         </div>
         <div class="form-group">
           <label>Описание неисправности *</label>
           <textarea formControlName="clientComplaint" rows="4" placeholder="Опишите проблему клиента..."></textarea>
+          @if (orderForm.get('clientComplaint')?.touched && orderForm.get('clientComplaint')?.errors?.['required']) {
+            <small class="text-danger">Обязательно</small>
+          }
         </div>
-        <button type="submit" class="btn btn--primary" [disabled]="orderForm.invalid">Создать заявку</button>
+        <div class="form-group">
+          <label>Внешнее состояние устройства</label>
+          <textarea formControlName="externalCondition" rows="3" placeholder="Сколы, царапины, потёртости, отсутствие комплектации и т.п."></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Ожидаемая дата завершения</label>
+            <input type="date" formControlName="estimatedCompletionDate" [min]="todayIso" />
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" formControlName="warrantyRepair" />
+              Гарантийный ремонт
+            </label>
+          </div>
+        </div>
+        <button type="submit" class="btn btn--primary" [disabled]="orderForm.invalid || submitting()">
+          {{ submitting() ? 'Создание...' : 'Создать заявку' }}
+        </button>
       </form>
     </div>
   }

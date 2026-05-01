@@ -29,7 +29,7 @@ export class SupplySettingsComponent implements OnInit {
     this.loading.set(true);
     this.supplyService.getSettings().subscribe({
       next: s => { this.settings.set(s); this.loading.set(false); },
-      error: () => this.loading.set(false)
+      error: () => { this.loading.set(false); this.toast.error('Не удалось загрузить настройки'); }
     });
   }
 
@@ -49,7 +49,8 @@ export class SupplySettingsComponent implements OnInit {
         this.toast.success('Настройка обновлена');
         this.editingKey.set(null);
         this.load();
-      }
+      },
+      error: (err) => this.toast.error(err?.error?.message ?? 'Не удалось обновить настройку')
     });
   }
 

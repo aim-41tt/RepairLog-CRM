@@ -10,6 +10,7 @@ import { Diagnostic } from '../../../core/models/diagnostic.models';
 import { Receipt } from '../../../core/models/receipt.models';
 import { ConfirmService } from '../../../core/services/confirm.service';
 import { DocumentService } from '../../../core/services/document.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-search-orders',
@@ -22,6 +23,7 @@ export class SearchOrdersComponent implements OnInit {
   private orderService = inject(OrderService);
   private refService = inject(ReferenceService);
   private confirmService = inject(ConfirmService);
+  private toast = inject(ToastService);
   documentService = inject(DocumentService);
 
   orders = signal<Order[]>([]);
@@ -44,7 +46,10 @@ export class SearchOrdersComponent implements OnInit {
   search(): void {
     const q = this.searchQuery();
     if (!q.trim()) return;
-    this.orderService.searchMulti(q).subscribe({ next: r => this.orders.set(r) });
+    this.orderService.searchMulti(q).subscribe({
+      next: r => this.orders.set(r),
+      error: () => { this.orders.set([]); this.toast.error('Ошибка поиска заявок'); }
+    });
   }
 
   changeStatus(orderId: number): void {
@@ -61,7 +66,8 @@ export class SearchOrdersComponent implements OnInit {
     }).subscribe(ok => {
       if (!ok) return;
       this.orderService.updateStatusReceptionist(orderId, { statusId }).subscribe({
-        next: () => this.search()
+        next: () => { this.toast.success('Статус изменён'); this.search(); },
+        error: (err) => this.toast.error(err?.error?.message ?? 'Не удалось изменить статус')
       });
     });
   }
@@ -77,17 +83,28 @@ export class SearchOrdersComponent implements OnInit {
     this.statusHistory.set([]);
     this.detailsLoading.set(true);
 
+    // Status history is core data — surface failures.
     this.orderService.getStatusHistory(orderId, 'receptionist').subscribe({
       next: h => this.statusHistory.set(h),
-      error: () => {}
+      error: (err) => this.toast.error(err?.error?.message ?? 'Не удалось загрузить историю статусов')
     });
+    // Diagnostic and receipt are optional per order (404 expected when absent — don't toast).
     this.orderService.getOrderDiagnosticsReceptionist(orderId).subscribe({
       next: d => this.orderDiagnostic.set(d),
-      error: () => {}
+      error: (err) => {
+        if (err?.status !== 404) {
+          this.toast.error(err?.error?.message ?? 'Не удалось загрузить диагностику');
+        }
+      }
     });
     this.orderService.getReceiptReceptionist(orderId).subscribe({
       next: r => { this.orderReceipt.set(r); this.detailsLoading.set(false); },
-      error: () => this.detailsLoading.set(false)
+      error: (err) => {
+        this.detailsLoading.set(false);
+        if (err?.status !== 404) {
+          this.toast.error(err?.error?.message ?? 'Не удалось загрузить квитанцию');
+        }
+      }
     });
   }
 

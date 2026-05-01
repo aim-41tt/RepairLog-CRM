@@ -58,7 +58,12 @@
             </td>
           </tr>
         } @empty {
-          <tr><td colspan="5" class="text-muted" style="text-align:center">Введите запрос для поиска</td></tr>
+          <!-- B-08: distinguish "not searched yet" from "searched, no results" -->
+          @if (searched()) {
+            <tr><td colspan="5" class="text-muted" style="text-align:center">Ничего не найдено</td></tr>
+          } @else {
+            <tr><td colspan="5" class="text-muted" style="text-align:center">Введите запрос для поиска</td></tr>
+          }
         }
       </tbody>
     </table>

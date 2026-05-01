@@ -29,12 +29,13 @@
           <button class="btn btn--ghost btn--sm" (click)="toggleExpand(r.id)">
             {{ expandedId() === r.id ? 'Скрыть' : 'Подробнее' }}
           </button>
-          @if (r.statusName === 'PENDING' || r.statusName === 'NEW' || r.statusName === 'AUTO_FORMED') {
+          @if (r.statusName === 'NEW' || r.statusName === 'AUTO_FORMED') {
             <button class="btn btn--primary btn--sm" (click)="approve(r.id)">Одобрить</button>
             <button class="btn btn--danger btn--sm" (click)="cancel(r.id)">Отмена</button>
           }
           @if (r.statusName === 'APPROVED') {
             <button class="btn btn--ghost btn--sm" (click)="markOrdered(r.id)">Заказана</button>
+            <button class="btn btn--danger btn--sm" (click)="cancel(r.id)">Отменить</button>
           }
           @if (r.statusName === 'ORDERED') {
             <button class="btn btn--ghost btn--sm" (click)="markInTransit(r.id)">В пути</button>
@@ -96,7 +97,7 @@
             <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
               <div class="form-group">
                 <label>Поставщик</label>
-                <select (change)="assignSupplier(r.id, $event)" style="min-width:200px">
+                <select (change)="assignSupplier(r.id, $event)" style="min-width:160px;max-width:100%">
                   <option value="0">{{ r.supplierName || 'Выберите...' }}</option>
                   @for (s of suppliers(); track s.id) {
                     <option [value]="s.id" [selected]="s.id === r.supplierId">{{ s.name }}</option>
@@ -121,16 +122,16 @@
 
             @if (showPaymentForm()) {
               <form [formGroup]="paymentForm" (ngSubmit)="addPayment(r.id)" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
-                <div class="form-group"><label>Сумма *</label><input type="number" formControlName="amount" min="0.01" step="0.01" /></div>
+                <div class="form-group"><label>Сумма *</label><input type="number" formControlName="paidAmount" min="0.01" step="0.01" /></div>
                 <div class="form-group">
                   <label>Способ *</label>
-                  <select formControlName="method">
+                  <select formControlName="paymentMethod">
                     @for (m of paymentMethods; track m) {
                       <option [value]="m">{{ paymentMethodLabel(m) }}</option>
                     }
                   </select>
                 </div>
-                <div class="form-group" style="flex:1"><label>Примечание</label><input type="text" formControlName="note" /></div>
+                <div class="form-group" style="flex:1"><label>Примечание</label><input type="text" formControlName="comment" /></div>
                 <button type="submit" class="btn btn--primary btn--sm" [disabled]="paymentForm.invalid">Записать</button>
               </form>
             }
@@ -169,8 +170,9 @@
             @if (showInvoiceForm()) {
               <form [formGroup]="invoiceForm" (ngSubmit)="addInvoice(r.id)" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
                 <div class="form-group"><label>Номер счёта *</label><input type="text" formControlName="invoiceNumber" /></div>
-                <div class="form-group"><label>Сумма *</label><input type="number" formControlName="amount" min="0.01" step="0.01" /></div>
-                <div class="form-group"><label>Дата выставления *</label><input type="date" formControlName="issuedAt" /></div>
+                <div class="form-group"><label>Сумма *</label><input type="number" formControlName="totalAmount" min="0.01" step="0.01" /></div>
+                <div class="form-group"><label>Дата выставления *</label><input type="date" formControlName="invoiceDate" /></div>
+                <div class="form-group"><label>Срок оплаты</label><input type="date" formControlName="dueDate" /></div>
                 <button type="submit" class="btn btn--primary btn--sm" [disabled]="invoiceForm.invalid">Добавить</button>
               </form>
             }

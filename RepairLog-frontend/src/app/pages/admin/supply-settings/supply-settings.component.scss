@@ -16,11 +16,22 @@
   padding: 16px 20px;
   background: var(--card-bg);
   flex-wrap: wrap;
+
+  @media (max-width: 480px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px;
+  }
 }
 
 .setting-info {
   flex: 1;
   min-width: 200px;
+
+  @media (max-width: 480px) {
+    min-width: 0;
+  }
 }
 
 .setting-key {
@@ -47,5 +58,12 @@
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 0.9rem;
+  }
+
+  @media (max-width: 480px) {
+    width: 100%;
+
+    > div { flex-wrap: wrap; }
+    input { min-width: 0 !important; flex: 1; }
   }
 }

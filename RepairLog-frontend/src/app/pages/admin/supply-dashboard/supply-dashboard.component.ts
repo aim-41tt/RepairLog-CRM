@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 import { PageLayoutComponent } from '../../../shared/components/page-layout/page-layout.component';
 import { SupplyRequestService } from '../../../core/services/supply-request.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { SupplyDashboardResponse } from '../../../core/models/supply-request.models';
 
 @Component({
@@ -14,6 +15,7 @@ import { SupplyDashboardResponse } from '../../../core/models/supply-request.mod
 })
 export class SupplyDashboardComponent implements OnInit {
   private supplyService = inject(SupplyRequestService);
+  private toast = inject(ToastService);
 
   dashboard = signal<SupplyDashboardResponse | null>(null);
   loading = signal(false);
@@ -22,7 +24,10 @@ export class SupplyDashboardComponent implements OnInit {
     this.loading.set(true);
     this.supplyService.getDashboard().subscribe({
       next: d => { this.dashboard.set(d); this.loading.set(false); },
-      error: () => this.loading.set(false)
+      error: (err) => {
+        this.loading.set(false);
+        this.toast.error(err?.error?.message ?? 'Не удалось загрузить дашборд снабжения');
+      }
     });
   }
 }

@@ -44,26 +44,53 @@
       </div>
 
       @if (!showPayForm()) {
-        <button class="btn btn--primary" style="margin-top:16px" (click)="showPayForm.set(true)">Принять оплату</button>
+        <!-- B-03: button disabled if order not in READY/ISSUED status -->
+        @let statusOk = order()?.currentStatusCode === 'READY' || order()?.currentStatusCode === 'ISSUED';
+        <button class="btn btn--primary" style="margin-top:16px"
+          [disabled]="!statusOk"
+          [title]="statusOk ? '' : 'Оплата доступна только для заказов «Готов к выдаче» или «Выдан»'"
+          (click)="showPayForm.set(true)">
+          Принять оплату
+        </button>
+        @if (!statusOk) {
+          <p class="hint" style="margin-top:6px;color:var(--color-muted)">
+            Оплата доступна только для готовых заказов
+          </p>
+        }
       } @else {
         <form [formGroup]="payForm" (ngSubmit)="processPayment()" style="margin-top:16px">
           <div class="form-row">
             <div class="form-group">
-              <label>Сумма (₽)</label>
-              <input type="number" formControlName="paidAmount" />
+              <label>Сумма (₽) *</label>
+              <input type="number" formControlName="paidAmount" min="0.01" step="0.01" />
+              @if (payForm.get('paidAmount')?.touched && payForm.get('paidAmount')?.errors?.['required']) {
+                <small class="text-danger">Обязательно</small>
+              } @else if (payForm.get('paidAmount')?.touched && payForm.get('paidAmount')?.errors?.['min']) {
+                <small class="text-danger">Сумма должна быть больше 0</small>
+              }
             </div>
             <div class="form-group">
-              <label>Способ оплаты</label>
+              <label>Способ оплаты *</label>
               <select formControlName="paymentMethod">
                 <option value="CASH">Наличные</option>
                 <option value="CARD">Карта</option>
                 <option value="TRANSFER">Перевод</option>
+                <option value="OTHER">Другое</option>
               </select>
             </div>
           </div>
+          @if (needsTransactionId()) {
+            <div class="form-group">
+              <label>Идентификатор транзакции</label>
+              <input type="text" formControlName="transactionId" placeholder="Номер из выписки/чека терминала" />
+            </div>
+          }
+          <!-- B-04: disabled while request is in flight -->
           <div style="display:flex;gap:8px">
-            <button type="submit" class="btn btn--primary">Оплатить</button>
-            <button type="button" class="btn btn--ghost" (click)="showPayForm.set(false)">Отмена</button>
+            <button type="submit" class="btn btn--primary" [disabled]="submitting() || payForm.invalid">
+              {{ submitting() ? 'Обработка...' : 'Оплатить' }}
+            </button>
+            <button type="button" class="btn btn--ghost" [disabled]="submitting()" (click)="showPayForm.set(false)">Отмена</button>
           </div>
         </form>
       }

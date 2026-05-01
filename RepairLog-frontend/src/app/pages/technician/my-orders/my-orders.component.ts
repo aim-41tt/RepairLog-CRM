@@ -2,6 +2,7 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PageLayoutComponent } from '../../../shared/components/page-layout/page-layout.component';
 import { OrderService } from '../../../core/services/order.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { Order } from '../../../core/models/order.models';
 
 @Component({
@@ -13,6 +14,7 @@ import { Order } from '../../../core/models/order.models';
 })
 export class MyOrdersComponent implements OnInit {
   private orderService = inject(OrderService);
+  private toast = inject(ToastService);
 
   orders = signal<Order[]>([]);
   loading = signal(false);
@@ -23,7 +25,7 @@ export class MyOrdersComponent implements OnInit {
     this.loading.set(true);
     this.orderService.getMyOrders().subscribe({
       next: r => { this.orders.set(r); this.loading.set(false); },
-      error: () => this.loading.set(false)
+      error: () => { this.loading.set(false); this.toast.error('Не удалось загрузить мои заявки'); }
     });
   }
 }

@@ -2,6 +2,7 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PageLayoutComponent } from '../../../shared/components/page-layout/page-layout.component';
 import { InventoryService } from '../../../core/services/inventory.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { InventoryItem } from '../../../core/models/inventory.models';
 
 @Component({
@@ -13,6 +14,7 @@ import { InventoryItem } from '../../../core/models/inventory.models';
 })
 export class WarehouseComponent implements OnInit {
   private inventoryService = inject(InventoryService);
+  private toast = inject(ToastService);
 
   items = signal<InventoryItem[]>([]);
   loading = signal(false);
@@ -25,7 +27,7 @@ export class WarehouseComponent implements OnInit {
     this.loading.set(true);
     this.inventoryService.getAll().subscribe({
       next: i => { this.items.set(i); this.loading.set(false); },
-      error: () => this.loading.set(false)
+      error: () => { this.loading.set(false); this.toast.error('Не удалось загрузить материалы'); }
     });
   }
 
@@ -34,14 +36,20 @@ export class WarehouseComponent implements OnInit {
     if (!q.trim()) { this.loadAll(); return; }
     this.loading.set(true);
     this.inventoryService.search(q).subscribe({
-      next: i => { this.items.set(i); this.loading.set(false); }
+      next: i => { this.items.set(i); this.loading.set(false); },
+      error: () => { this.loading.set(false); this.toast.error('Ошибка поиска материалов'); }
     });
   }
 
   loadLowStock(): void {
     this.loading.set(true);
     this.inventoryService.getLowStock().subscribe({
-      next: i => { this.items.set(i); this.loading.set(false); this.showLowStock.set(true); }
+      next: i => { this.items.set(i); this.loading.set(false); this.showLowStock.set(true); },
+      error: () => {
+        this.loading.set(false);
+        this.showLowStock.set(false);
+        this.toast.error('Не удалось загрузить материалы с низким запасом');
+      }
     });
   }
 }

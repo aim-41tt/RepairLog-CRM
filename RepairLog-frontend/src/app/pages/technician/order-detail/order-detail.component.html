@@ -68,14 +68,6 @@
         </div>
       }
 
-      <div class="card" style="margin-top:16px">
-        <div class="card-title">Документы</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn--ghost" (click)="documentService.generateReceipt(+id, 'technician')">Квитанция приёмки</button>
-          <button class="btn btn--ghost" (click)="documentService.generateCompletionAct(+id, 'technician')">Акт выполненных работ</button>
-          <button class="btn btn--ghost" (click)="documentService.generateWarrantyCard(+id, 'technician')">Гарантийный талон</button>
-        </div>
-      </div>
     }
 
     <!-- Diagnostics tab -->
@@ -103,8 +95,6 @@
           </div>
           <button class="btn btn--ghost btn--sm" (click)="startEditDiag(d)">Редактировать</button>
         </div>
-      } @empty {
-        <div class="empty-state"><p>Нет диагностики</p></div>
       }
     }
 
@@ -114,8 +104,27 @@
         <div class="card-title">Добавить работу</div>
         <form [formGroup]="workForm" (ngSubmit)="submitWork()">
           <div class="form-row">
-            <div class="form-group" style="flex:2"><label>Описание работы</label><input type="text" formControlName="description" /></div>
-            <div class="form-group"><label>Цена (₽)</label><input type="number" formControlName="price" /></div>
+            <div class="form-group" style="flex:2">
+              <label>Описание работы</label>
+              <input type="text" formControlName="description" />
+              @if (workForm.get('description')?.touched && workForm.get('description')?.errors?.['required']) {
+                <small class="field-error">Обязательное поле</small>
+              }
+              @if (workForm.get('description')?.errors?.['server']) {
+                <small class="field-error">{{ workForm.get('description')?.errors?.['server'] }}</small>
+              }
+            </div>
+            <div class="form-group">
+              <label>Цена (₽)</label>
+              <!-- B-07: min="0" enforces non-negative at HTML level -->
+              <input type="number" formControlName="price" min="0" />
+              @if (workForm.get('price')?.touched && workForm.get('price')?.errors?.['min']) {
+                <small class="field-error">Цена не может быть отрицательной</small>
+              }
+              @if (workForm.get('price')?.errors?.['server']) {
+                <small class="field-error">{{ workForm.get('price')?.errors?.['server'] }}</small>
+              }
+            </div>
           </div>
           <button type="submit" class="btn btn--primary" style="margin-top:8px">Добавить</button>
         </form>
@@ -138,21 +147,86 @@
       </div>
       <div class="table-wrapper">
         <table>
-          <thead><tr><th>Название</th><th>Кол-во</th><th>Цена</th><th>Статус</th><th>Расход</th></tr></thead>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Название</th>
+              <th>Серийный №</th>
+              <th>Тип</th>
+              <th>Кол-во</th>
+              <th>Цена</th>
+              <th>Статус</th>
+              <th>Расход</th>
+            </tr>
+          </thead>
           <tbody>
             @for (item of inventory(); track item.id) {
-              <tr>
-                <td>{{ item.name }}</td>
+              <!-- Main row -->
+              <tr style="cursor:pointer" (click)="expandedInventoryId.set(expandedInventoryId() === item.id ? null : item.id)">
+                <td style="width:24px;color:var(--text-muted);font-size:12px">
+                  {{ expandedInventoryId() === item.id ? '▲' : '▼' }}
+                </td>
+                <td><strong>{{ item.name }}</strong></td>
+                <td>{{ item.serialNumber || '—' }}</td>
+                <td>
+                  @if (item.device) {
+                    <span class="badge badge--info">Устройство</span>
+                  } @else {
+                    <span class="badge badge--muted">Запчасть</span>
+                  }
+                </td>
                 <td>{{ item.quantity }}</td>
                 <td>{{ item.unitPrice }} ₽</td>
-                <td>@if (item.stockStatus === 'LOW_STOCK') { <span class="badge badge--warning">Мало</span> }</td>
-                <td style="display:flex;gap:6px;align-items:center">
-                  <input type="number" [value]="consumeQty()" (input)="consumeQty.set(+$any($event.target).value)" style="width:60px" min="1" />
-                  <button class="btn btn--ghost btn--sm" (click)="consume(item)">Списать</button>
+                <td>
+                  @if (item.stockStatus === 'OUT_OF_STOCK') {
+                    <span class="badge badge--danger">Нет</span>
+                  } @else if (item.stockStatus === 'LOW_STOCK') {
+                    <span class="badge badge--warning">Мало</span>
+                  } @else {
+                    <span class="badge badge--success">В норме</span>
+                  }
+                </td>
+                <td (click)="$event.stopPropagation()">
+                  @if (item.serialNumber) {
+                    <!-- Serial item: always consume 1 whole unit -->
+                    <button class="btn btn--ghost btn--sm" (click)="consumeQty.set(1); consume(item)">
+                      Списать целиком
+                    </button>
+                  } @else {
+                    <div style="display:flex;gap:6px;align-items:center">
+                      <input type="number" [value]="consumeQty()" (input)="consumeQty.set(+$any($event.target).value)" style="width:60px" min="1" />
+                      <button class="btn btn--ghost btn--sm" (click)="consume(item)">Списать</button>
+                    </div>
+                  }
                 </td>
               </tr>
+
+              <!-- Expanded detail row -->
+              @if (expandedInventoryId() === item.id) {
+                <tr>
+                  <td colspan="8" style="background:var(--bg-muted);padding:8px 16px 12px 48px;border-bottom:2px solid var(--border)">
+                    <div style="display:flex;flex-wrap:wrap;gap:12px 32px;font-size:13px">
+                      @if (item.serialNumber) {
+                        <div><span style="color:var(--text-muted);font-size:12px">Серийный номер: </span>{{ item.serialNumber }}</div>
+                      }
+                      @if (item.degreeWearName) {
+                        <div><span style="color:var(--text-muted);font-size:12px">Состояние: </span>{{ item.degreeWearName }}</div>
+                      }
+                      @if (item.preferredSupplierName) {
+                        <div><span style="color:var(--text-muted);font-size:12px">Поставщик: </span>{{ item.preferredSupplierName }}</div>
+                      }
+                      <div><span style="color:var(--text-muted);font-size:12px">Мин. запас: </span>{{ item.minStockLevel }}</div>
+                    </div>
+                  </td>
+                </tr>
+              }
             } @empty {
-              <tr><td colspan="5" class="text-muted" style="text-align:center">Введите запрос для поиска</td></tr>
+              <!-- B-08: distinguish "not searched yet" from "searched, no results" -->
+              @if (inventorySearched()) {
+                <tr><td colspan="8" class="text-muted" style="text-align:center">Ничего не найдено</td></tr>
+              } @else {
+                <tr><td colspan="8" class="text-muted" style="text-align:center">Введите запрос для поиска</td></tr>
+              }
             }
           </tbody>
         </table>

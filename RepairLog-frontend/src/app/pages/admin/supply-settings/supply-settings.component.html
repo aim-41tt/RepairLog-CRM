@@ -28,13 +28,13 @@
           </div>
           <div class="setting-value">
             @if (editingKey() === s.settingKey) {
-              <div style="display:flex;gap:8px;align-items:center">
-                <input type="text" [value]="editValue()" (input)="onValueChange($event)" style="min-width:180px" />
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <input type="text" [value]="editValue()" (input)="onValueChange($event)" style="min-width:140px;flex:1" />
                 <button class="btn btn--primary btn--sm" (click)="saveEdit(s.settingKey)">Сохранить</button>
                 <button class="btn btn--ghost btn--sm" (click)="cancelEdit()">Отмена</button>
               </div>
             } @else {
-              <div style="display:flex;gap:8px;align-items:center">
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                 <code>{{ s.settingValue }}</code>
                 <button class="btn btn--ghost btn--sm" (click)="startEdit(s)">Изменить</button>
               </div>

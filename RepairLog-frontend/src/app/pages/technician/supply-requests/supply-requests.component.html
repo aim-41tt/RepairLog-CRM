@@ -12,13 +12,27 @@
       <div class="card-title">Запрос материала</div>
       <form [formGroup]="form" (ngSubmit)="submit()">
         <div class="form-row">
-          <div class="form-group" style="flex:2"><label>Название материала *</label><input type="text" formControlName="itemName" /></div>
-          <div class="form-group"><label>Количество *</label><input type="number" formControlName="quantity" min="1" /></div>
+          <div class="form-group" style="flex:2">
+            <label>Название материала *</label>
+            <input type="text" formControlName="itemName" />
+            @if (form.get('itemName')?.touched && form.get('itemName')?.errors?.['required']) {
+              <small class="text-danger">Обязательно</small>
+            }
+          </div>
+          <div class="form-group">
+            <label>Количество *</label>
+            <input type="number" formControlName="quantity" min="1" />
+            @if (form.get('quantity')?.touched && form.get('quantity')?.errors?.['min']) {
+              <small class="text-danger">Минимум 1</small>
+            }
+          </div>
           <div class="form-group" style="flex:2"><label>Комментарий</label><input type="text" formControlName="comment" /></div>
         </div>
         <div style="display:flex;gap:8px;margin-top:12px">
-          <button type="submit" class="btn btn--primary">Отправить</button>
-          <button type="button" class="btn btn--ghost" (click)="showForm.set(false)">Отмена</button>
+          <button type="submit" class="btn btn--primary" [disabled]="form.invalid || submitting()">
+            {{ submitting() ? 'Отправка...' : 'Отправить' }}
+          </button>
+          <button type="button" class="btn btn--ghost" [disabled]="submitting()" (click)="showForm.set(false)">Отмена</button>
         </div>
       </form>
     </div>

@@ -1,5 +1,5 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { PageLayoutComponent } from '../../../shared/components/page-layout/page-layout.component';
 import { ClientService } from '../../../core/services/client.service';
@@ -7,12 +7,29 @@ import { DeviceService } from '../../../core/services/device.service';
 import { OrderService } from '../../../core/services/order.service';
 import { ReferenceService } from '../../../core/services/reference.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { DocumentService } from '../../../core/services/document.service';
 import { Client } from '../../../core/models/client.models';
 import { Device } from '../../../core/models/device.models';
 import { Order } from '../../../core/models/order.models';
 import { Priority, DeviceType, Brand, DeviceModel } from '../../../core/models/reference.models';
 
 type Step = 'client' | 'device' | 'order' | 'done';
+
+/** B-13: validates that date is not in the future */
+function pastOrPresentValidator(control: AbstractControl): ValidationErrors | null {
+  if (!control.value) return null;
+  const entered = new Date(control.value);
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  return entered > today ? { futureDate: true } : null;
+}
+
+/** B-12: phone number basic format validator */
+function phoneValidator(control: AbstractControl): ValidationErrors | null {
+  if (!control.value) return null;
+  const clean = (control.value as string).replace(/[\s()\-+]/g, '');
+  return /^\d{7,15}$/.test(clean) ? null : { invalidPhone: true };
+}
 
 @Component({
   selector: 'app-create-order',
@@ -27,6 +44,7 @@ export class CreateOrderComponent implements OnInit {
   private orderService = inject(OrderService);
   private referenceService = inject(ReferenceService);
   private toast = inject(ToastService);
+  private documentService = inject(DocumentService);
   private router = inject(Router);
   private fb = inject(FormBuilder);
 
@@ -39,11 +57,18 @@ export class CreateOrderComponent implements OnInit {
   searchDone = signal(false);
   showClientForm = signal(false);
   createdOrder = signal<Order | null>(null);
+  /** Guards against double-submission (network can take >1s) */
+  submitting = signal(false);
 
   priorities = signal<Priority[]>([]);
   deviceTypes = signal<DeviceType[]>([]);
   brands = signal<Brand[]>([]);
   models = signal<DeviceModel[]>([]);
+
+  // DeviceType search-or-create
+  deviceTypeSearch = signal('');
+  filteredDeviceTypes = signal<DeviceType[]>([]);
+  selectedDeviceType = signal<DeviceType | null>(null);
 
   // Brand/model search-or-create
   brandSearch = signal('');
@@ -53,25 +78,33 @@ export class CreateOrderComponent implements OnInit {
   selectedBrand = signal<Brand | null>(null);
   selectedModel = signal<DeviceModel | null>(null);
 
+  /** ISO date string for today — used as max on date input (B-13) */
+  readonly todayIso = new Date().toISOString().split('T')[0];
+
   clientForm = this.fb.nonNullable.group({
     surname: ['', Validators.required],
     name: ['', Validators.required],
     patronymic: [''],
-    phone: ['', Validators.required],
-    dateBirth: ['', Validators.required],
-    email: [''],
-    consentGiven: [true],
-    notificationsEnabled: [true]
+    // B-12: pattern validator for phone format
+    phone: ['', [Validators.required, phoneValidator]],
+    // B-13: date not in future; B-16: no longer required (optional field)
+    dateBirth: ['', [pastOrPresentValidator]],
+    email: ['', [Validators.email]],
+    // B-15: must be explicitly checked by user (not pre-checked)
+    consentGiven: [false, [Validators.requiredTrue]],
+    notificationsEnabled: [false]
   });
 
   deviceForm = this.fb.nonNullable.group({
-    deviceTypeId: [0, Validators.required],
     serialNumber: ['']
   });
 
   orderForm = this.fb.nonNullable.group({
-    priorityId: [0, Validators.required],
-    clientComplaint: ['', Validators.required]
+    priorityId: [0, [Validators.required, Validators.min(1)]],
+    clientComplaint: ['', Validators.required],
+    externalCondition: [''],
+    estimatedCompletionDate: [''],
+    warrantyRepair: [false]
   });
 
   ngOnInit(): void {
@@ -87,12 +120,18 @@ export class CreateOrderComponent implements OnInit {
     if (!q.trim()) return;
     this.searchDone.set(true);
     this.showClientForm.set(false);
-    this.clientService.search(q).subscribe({ next: r => this.searchResults.set(r) });
+    this.clientService.search(q).subscribe({
+      next: r => this.searchResults.set(r),
+      error: () => { this.searchResults.set([]); this.toast.error('Ошибка поиска клиентов'); }
+    });
   }
 
   selectClient(c: Client): void {
     this.selectedClient.set(c);
-    this.deviceService.getByClient(c.id).subscribe({ next: d => this.clientDevices.set(d) });
+    this.deviceService.getByClient(c.id).subscribe({
+      next: d => this.clientDevices.set(d),
+      error: () => { this.clientDevices.set([]); this.toast.error('Не удалось загрузить устройства клиента'); }
+    });
     this.step.set('device');
   }
 
@@ -103,15 +142,41 @@ export class CreateOrderComponent implements OnInit {
       next: c => {
         this.toast.success('Клиент создан');
         this.selectClient(c);
-      }
+      },
+      error: (err) => this.toast.error(err?.error?.message ?? 'Не удалось создать клиента')
     });
   }
 
-  // ── Step 2: Device (brand/model search-or-create) ──
+  // ── Step 2: Device (deviceType/brand/model search-or-create) ──
 
   selectDevice(d: Device): void {
     this.selectedDevice.set(d);
     this.step.set('order');
+  }
+
+  filterDeviceTypes(): void {
+    const q = this.deviceTypeSearch().toLowerCase().trim();
+    if (!q) { this.filteredDeviceTypes.set(this.deviceTypes()); return; }
+    this.filteredDeviceTypes.set(this.deviceTypes().filter(t => t.name.toLowerCase().includes(q)));
+  }
+
+  pickDeviceType(t: DeviceType): void {
+    this.selectedDeviceType.set(t);
+    this.deviceTypeSearch.set(t.name);
+    this.filteredDeviceTypes.set([]);
+  }
+
+  createNewDeviceType(): void {
+    const name = this.deviceTypeSearch().trim();
+    if (!name) return;
+    this.referenceService.createDeviceType(name).subscribe({
+      next: t => {
+        this.deviceTypes.update(arr => [...arr, t]);
+        this.pickDeviceType(t);
+        this.toast.success(`Тип «${t.name}» создан`);
+      },
+      error: (err) => this.toast.error(err?.error?.message ?? 'Не удалось создать тип')
+    });
   }
 
   filterBrands(): void {
@@ -138,7 +203,8 @@ export class CreateOrderComponent implements OnInit {
         this.brands.update(arr => [...arr, b]);
         this.pickBrand(b);
         this.toast.success(`Марка «${b.name}» создана`);
-      }
+      },
+      error: (err) => this.toast.error(err?.error?.message ?? 'Не удалось создать марку')
     });
   }
 
@@ -163,46 +229,62 @@ export class CreateOrderComponent implements OnInit {
         this.models.update(arr => [...arr, m]);
         this.pickModel(m);
         this.toast.success(`Модель «${m.name}» создана`);
-      }
+      },
+      error: (err) => this.toast.error(err?.error?.message ?? 'Не удалось создать модель')
     });
   }
 
   createNewDevice(): void {
     const v = this.deviceForm.getRawValue();
+    const devType = this.selectedDeviceType();
     const brand = this.selectedBrand();
     const model = this.selectedModel();
+    if (!devType) {
+      this.toast.warning('Выберите или создайте тип устройства');
+      return;
+    }
     if (!brand || !model) {
       this.toast.warning('Выберите или создайте марку и модель');
       return;
     }
     const clientId = this.selectedClient()!.id;
     this.deviceService.create({
-      deviceType: { id: v.deviceTypeId },
+      deviceType: { id: devType.id },
       brand: { id: brand.id },
       model: { id: model.id },
       clientId,
       serialNumber: v.serialNumber || undefined,
       clientOwned: true
     }).subscribe({
-      next: d => { this.selectedDevice.set(d); this.step.set('order'); }
+      next: d => { this.toast.success('Устройство создано'); this.selectedDevice.set(d); this.step.set('order'); },
+      error: (err) => this.toast.error(err?.error?.message ?? 'Не удалось создать устройство')
     });
   }
 
   // ── Step 3: Order ──
 
   submitOrder(): void {
-    if (this.orderForm.invalid) return;
+    if (this.orderForm.invalid || this.submitting()) return;
+    this.submitting.set(true);
     const v = this.orderForm.getRawValue();
     this.orderService.createOrder({
       clientId: this.selectedClient()!.id,
       deviceId: this.selectedDevice()!.id,
       priorityId: v.priorityId,
-      clientComplaint: v.clientComplaint
+      clientComplaint: v.clientComplaint,
+      externalCondition: v.externalCondition || undefined,
+      estimatedCompletionDate: v.estimatedCompletionDate || undefined,
+      warrantyRepair: v.warrantyRepair
     }).subscribe({
       next: order => {
+        this.submitting.set(false);
         this.createdOrder.set(order);
         this.step.set('done');
         this.toast.success('Заявка создана');
+      },
+      error: (err) => {
+        this.submitting.set(false);
+        this.toast.error(err?.error?.message ?? 'Не удалось создать заявку');
       }
     });
   }
@@ -228,7 +310,10 @@ export class CreateOrderComponent implements OnInit {
   // ── Step 4: Done ──
 
   printReceipt(): void {
-    window.print();
+    const order = this.createdOrder();
+    if (order) {
+      this.documentService.generateReceipt(order.id, 'receptionist');
+    }
   }
 
   createAnother(): void {
@@ -241,6 +326,9 @@ export class CreateOrderComponent implements OnInit {
     this.searchDone.set(false);
     this.showClientForm.set(false);
     this.clientDevices.set([]);
+    this.selectedDeviceType.set(null);
+    this.deviceTypeSearch.set('');
+    this.filteredDeviceTypes.set([]);
     this.selectedBrand.set(null);
     this.selectedModel.set(null);
     this.brandSearch.set('');

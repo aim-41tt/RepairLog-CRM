@@ -12,14 +12,50 @@
       <div class="card-title">{{ editId() ? 'Редактировать' : 'Новый сотрудник' }}</div>
       <form [formGroup]="form" (ngSubmit)="submit()">
         <div class="form-row">
-          <div class="form-group"><label>Фамилия *</label><input type="text" formControlName="surname" /></div>
-          <div class="form-group"><label>Имя *</label><input type="text" formControlName="name" /></div>
-          <div class="form-group"><label>Отчество</label><input type="text" formControlName="patronymic" /></div>
+          <div class="form-group">
+            <label>Фамилия *</label>
+            <input type="text" formControlName="surname" maxlength="100" />
+            @if (form.get('surname')?.touched && form.get('surname')?.errors?.['required']) {
+              <small class="text-danger">Обязательно</small>
+            }
+          </div>
+          <div class="form-group">
+            <label>Имя *</label>
+            <input type="text" formControlName="name" maxlength="100" />
+            @if (form.get('name')?.touched && form.get('name')?.errors?.['required']) {
+              <small class="text-danger">Обязательно</small>
+            }
+          </div>
+          <div class="form-group"><label>Отчество</label><input type="text" formControlName="patronymic" maxlength="100" /></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Дата рождения *</label><input type="date" formControlName="dateBirth" /></div>
-          <div class="form-group"><label>Логин *</label><input type="text" formControlName="login" /></div>
-          <div class="form-group"><label>Пароль</label><input type="password" formControlName="password" /></div>
+          <div class="form-group">
+            <label>Дата рождения *</label>
+            <input type="date" formControlName="dateBirth" />
+            @if (form.get('dateBirth')?.touched && form.get('dateBirth')?.errors?.['required']) {
+              <small class="text-danger">Обязательно</small>
+            }
+          </div>
+          <div class="form-group">
+            <label>Логин *</label>
+            <input type="text" formControlName="login" minlength="3" maxlength="50" placeholder="3–50 символов" />
+            @if (form.get('login')?.touched && form.get('login')?.errors?.['required']) {
+              <small class="text-danger">Обязательно</small>
+            } @else if (form.get('login')?.touched && form.get('login')?.errors?.['minlength']) {
+              <small class="text-danger">Минимум 3 символа</small>
+            } @else if (form.get('login')?.touched && form.get('login')?.errors?.['maxlength']) {
+              <small class="text-danger">Максимум 50 символов</small>
+            }
+          </div>
+          <div class="form-group">
+            <label>Пароль{{ editId() ? ' (оставьте пустым, чтобы не менять)' : ' *' }}</label>
+            <input type="password" formControlName="password" maxlength="100" placeholder="8–100 символов" />
+            @if (form.get('password')?.touched && form.get('password')?.errors?.['required']) {
+              <small class="text-danger">Обязательно</small>
+            } @else if (form.get('password')?.touched && form.get('password')?.errors?.['minlength']) {
+              <small class="text-danger">Минимум 8 символов</small>
+            }
+          </div>
         </div>
         <div class="form-group" style="margin-top:12px">
           <label>Роли *</label>
@@ -33,7 +69,7 @@
           </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:12px">
-          <button type="submit" class="btn btn--primary">Сохранить</button>
+          <button type="submit" class="btn btn--primary" [disabled]="form.invalid">Сохранить</button>
           <button type="button" class="btn btn--ghost" (click)="showForm.set(false)">Отмена</button>
         </div>
       </form>
@@ -70,8 +106,8 @@
                   <button class="btn btn--ghost btn--sm" (click)="openPasswordChange(emp.id)">Сменить пароль</button>
                 </div>
                 @if (passwordChangeId() === emp.id) {
-                  <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
-                    <input type="password" placeholder="Новый пароль" [ngModel]="newPassword()" (ngModelChange)="newPassword.set($event)" style="width:180px" />
+                  <div style="display:flex;gap:6px;margin-top:6px;align-items:center;flex-wrap:wrap">
+                    <input type="password" placeholder="Новый пароль" [ngModel]="newPassword()" (ngModelChange)="newPassword.set($event)" style="width:180px;max-width:100%" />
                     <button class="btn btn--primary btn--sm" (click)="changePassword()" [disabled]="!newPassword()">Сохранить</button>
                     <button class="btn btn--ghost btn--sm" (click)="passwordChangeId.set(null)">Отмена</button>
                   </div>
@@ -84,5 +120,13 @@
         </tbody>
       </table>
     </div>
+
+    @if (totalPages() > 1) {
+      <div class="pagination" style="display:flex;gap:8px;align-items:center;margin-top:12px;justify-content:center">
+        <button class="btn btn--ghost btn--sm" (click)="prev()" [disabled]="page() === 0">← Назад</button>
+        <span class="text-muted">Страница {{ page() + 1 }} из {{ totalPages() }}</span>
+        <button class="btn btn--ghost btn--sm" (click)="next()" [disabled]="page() >= totalPages() - 1">Вперёд →</button>
+      </div>
+    }
   }
 </app-page-layout>

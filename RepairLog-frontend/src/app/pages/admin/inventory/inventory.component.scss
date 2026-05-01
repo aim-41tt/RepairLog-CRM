@@ -1,0 +1,24 @@
+@use '../../../../styles/variables' as *;
+
+:host { display: block; }
+
+.inv-row {
+  transition: background $transition-fast;
+  &:hover { background: var(--bg-muted); }
+  &--expanded { background: var(--bg-muted); }
+}
+
+.inv-detail-row td {
+  background: var(--bg-muted);
+  padding: 8px 16px 12px 48px;
+  border-bottom: 2px solid var(--border);
+}
+
+.inv-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+
+  &__field { font-size: 13px; }
+  &__label { color: var(--text-muted); font-size: 12px; margin-right: 4px; }
+}
