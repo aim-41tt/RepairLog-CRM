@@ -16,6 +16,11 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: $gap-md;
+
+  @media (max-width: $bp-mobile) {
+    grid-template-columns: 1fr;
+    gap: $gap-sm;
+  }
 }
 
 input[type="text"],
@@ -57,6 +62,14 @@ textarea { resize: vertical; min-height: 80px; }
 .form-error {
   font-size: 12px;
   color: var(--danger);
+  margin-top: 2px;
+}
+
+/* B-07: inline field validation errors (used with Angular server-side error binding) */
+.field-error {
+  display: block;
+  font-size: 11px;
+  color: #c62828;
   margin-top: 2px;
 }
 

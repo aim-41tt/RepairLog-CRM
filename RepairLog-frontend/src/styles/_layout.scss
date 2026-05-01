@@ -10,9 +10,19 @@
 .page-content {
   flex: 1;
   padding: $gap-lg $gap-xl;
-  max-width: 1280px;
+  /* B-09: expanded from 1280px so content isn't squeezed at 1366px+ displays */
+  max-width: 1440px;
   margin: 0 auto;
   width: 100%;
+  /* B-09: ensure padding doesn't cause overflow on smaller viewports */
+  box-sizing: border-box;
+
+  @media (max-width: $bp-tablet) {
+    padding: $gap-md;
+  }
+  @media (max-width: $bp-mobile) {
+    padding: $gap-sm;
+  }
 }
 
 .page-header {
@@ -22,6 +32,21 @@
   margin-bottom: $gap-lg;
 
   h1, h2 { margin: 0; }
+
+  @media (max-width: $bp-mobile) {
+    flex-wrap: wrap;
+    gap: $gap-sm;
+    margin-bottom: $gap-md;
+
+    h1 { font-size: 20px; }
+    h2 { font-size: 17px; }
+
+    > div {
+      display: flex;
+      flex-wrap: wrap;
+      gap: $gap-xs;
+    }
+  }
 }
 
 .toolbar {
@@ -30,6 +55,16 @@
   gap: $gap-sm;
   margin-bottom: $gap-md;
   flex-wrap: wrap;
+
+  @media (max-width: $bp-mobile) {
+    gap: $gap-xs;
+
+    input[type="search"],
+    input[type="text"] {
+      max-width: none !important;
+      width: 100%;
+    }
+  }
 }
 
 .filters-bar {
@@ -68,6 +103,13 @@
   border-bottom: 2px solid var(--border);
   gap: 0;
   margin-bottom: $gap-lg;
+
+  @media (max-width: $bp-mobile) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    margin-bottom: $gap-md;
+  }
 }
 
 .tab {
@@ -79,11 +121,17 @@
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
   transition: color $transition-fast, border-color $transition-fast;
+  white-space: nowrap;
 
   &:hover { color: var(--text); }
   &.active {
     color: var(--role-color);
     border-bottom-color: var(--role-color);
+  }
+
+  @media (max-width: $bp-mobile) {
+    padding: 8px 12px;
+    font-size: 12px;
   }
 }
 
@@ -94,6 +142,10 @@
 
   p { font-size: 15px; }
   span { font-size: 13px; }
+
+  @media (max-width: $bp-mobile) {
+    padding: $gap-lg $gap-md;
+  }
 }
 
 .status-filter-bar {

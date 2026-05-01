@@ -6,6 +6,10 @@
   border-radius: $radius-md;
   padding: $gap-lg;
   box-shadow: 0 1px 4px var(--shadow);
+
+  @media (max-width: $bp-mobile) {
+    padding: $gap-md;
+  }
 }
 
 .card--clickable {

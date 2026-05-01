@@ -1,15 +1,18 @@
 <header class="navbar">
-  <a class="navbar__brand" routerLink="/menu">CRM Сервисного центра</a>
+  <a class="navbar__brand" routerLink="/menu">CRM RepairLog</a>
 
   <div class="navbar__spacer"></div>
 
-  <span class="navbar__user">{{ userService.fullName() }}</span>
+  <!-- B-09: wrap right-side elements so they don't overflow off screen -->
+  <div class="navbar__actions">
+    <span class="navbar__user">{{ userService.fullName() }}</span>
 
-  <select class="navbar__theme-select" [value]="themeService.mode()" (change)="onThemeChange($event)">
-    <option value="light">Светлая</option>
-    <option value="dark">Тёмная</option>
-    <option value="system">Системная</option>
-  </select>
+    <select class="navbar__theme-select" [value]="themeService.mode()" (change)="onThemeChange($event)">
+      <option value="light">Светлая</option>
+      <option value="dark">Тёмная</option>
+      <option value="system">Системная</option>
+    </select>
 
-  <button class="btn btn--ghost navbar__logout" (click)="logout()">Выйти</button>
+    <button class="btn btn--ghost navbar__logout" (click)="logout()">Выйти</button>
+  </div>
 </header>
