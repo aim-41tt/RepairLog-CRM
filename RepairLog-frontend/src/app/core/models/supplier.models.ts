@@ -25,4 +25,10 @@ export interface CreateSupplierRequest {
   address?: string;
   inn?: string;
   integrationType?: string;
+  priceSource?: string;
+  orderMethod?: string;
+  websiteUrl?: string;
+  contactMessenger?: string;
+  priceListEmail?: string;
+  externalSupplierId?: string;
 }

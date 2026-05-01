@@ -10,6 +10,7 @@ export class ReferenceService {
   private base = `${inject(API_URL)}/reference`;
 
   getDeviceTypes(): Observable<DeviceType[]> { return this.http.get<DeviceType[]>(`${this.base}/device-types`); }
+  createDeviceType(name: string): Observable<DeviceType> { return this.http.post<DeviceType>(`${this.base}/device-types`, { name }); }
   getBrands(): Observable<Brand[]> { return this.http.get<Brand[]>(`${this.base}/brands`); }
   createBrand(name: string): Observable<Brand> { return this.http.post<Brand>(`${this.base}/brands`, { name }); }
   getBrandModels(brandId: number): Observable<DeviceModel[]> { return this.http.get<DeviceModel[]>(`${this.base}/brands/${brandId}/models`); }

@@ -23,4 +23,5 @@ export class InventoryService {
   adminGetLowStock(): Observable<InventoryItem[]> { return this.http.get<InventoryItem[]>(`${this.apiUrl}/admin/inventory/low-stock`); }
   adminCreate(req: CreateInventoryRequest): Observable<InventoryItem> { return this.http.post<InventoryItem>(`${this.apiUrl}/admin/inventory`, req); }
   adminReceive(itemId: number, req: ReceiveInventoryRequest): Observable<void> { return this.http.post<void>(`${this.apiUrl}/admin/inventory/${itemId}/receive`, req); }
+  adminDelete(itemId: number): Observable<void> { return this.http.delete<void>(`${this.apiUrl}/admin/inventory/${itemId}`); }
 }

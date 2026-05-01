@@ -1,11 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { API_URL } from '../tokens/api-url.token';
+import { ToastService } from './toast.service';
 
 @Injectable({ providedIn: 'root' })
 export class DocumentService {
   private http = inject(HttpClient);
   private apiUrl = inject(API_URL);
+  private toast = inject(ToastService);
 
   generateReceipt(orderId: number, role: 'receptionist' | 'technician'): void {
     this.openPdf(`${this.apiUrl}/${role}/orders/${orderId}/documents/receipt`);
@@ -31,6 +33,7 @@ export class DocumentService {
       },
       error: (err) => {
         console.error('Ошибка генерации документа:', err);
+        this.toast.error('Не удалось сформировать документ. Проверьте, заполнены ли все данные заявки.');
       }
     });
   }

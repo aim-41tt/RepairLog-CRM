@@ -11,6 +11,8 @@ export interface Order {
   assignedMasterId?: number;
   currentStatusName: string;
   currentStatusId: number;
+  /** Machine-readable status code, e.g. 'READY', 'ISSUED', 'CANCELLED' */
+  currentStatusCode: string;
   priorityName: string;
   clientComplaint?: string;
   externalCondition?: string;

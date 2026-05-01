@@ -14,4 +14,10 @@
   gap: $gap-lg;
   justify-content: center;
   padding: $gap-xl 0;
+
+  @media (max-width: $bp-mobile) {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: $gap-md;
+    padding: $gap-md 0;
+  }
 }

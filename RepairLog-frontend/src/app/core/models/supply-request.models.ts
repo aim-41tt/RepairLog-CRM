@@ -1,6 +1,6 @@
 export type SupplyRequestStatus =
-  'DRAFT' | 'PENDING' | 'APPROVED' | 'CANCELLED' |
-  'ORDERED' | 'IN_TRANSIT' | 'DELIVERED';
+  'NEW' | 'AUTO_FORMED' | 'APPROVED' | 'CANCELLED' |
+  'ORDERED' | 'IN_TRANSIT' | 'DELIVERED' | 'PARTIALLY_DELIVERED';
 
 export interface SupplyRequestItem {
   id: number;
@@ -53,15 +53,17 @@ export interface AssignSupplierRequest {
 }
 
 export interface CreateSupplierPaymentRequest {
-  amount: number;
-  method: string;
-  note?: string;
+  paidAmount: number;
+  paymentMethod: string;
+  transactionId?: string;
+  comment?: string;
 }
 
 export interface CreateSupplierInvoiceRequest {
   invoiceNumber: string;
-  amount: number;
-  issuedAt: string;
+  invoiceDate: string;
+  totalAmount: number;
+  dueDate?: string;
 }
 
 export interface SupplierPaymentResponse {

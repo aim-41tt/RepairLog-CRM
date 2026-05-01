@@ -22,7 +22,6 @@ export interface CreateInventoryRequest {
   minQuantity?: number;
   purchasePrice?: number;
   sellingPrice?: number;
-  location?: string;
 }
 
 export interface ReceiveInventoryRequest {

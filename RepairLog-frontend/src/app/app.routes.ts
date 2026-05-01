@@ -33,7 +33,8 @@ export const routes: Routes = [
           { path: 'supply-dashboard', loadComponent: () => import('./pages/admin/supply-dashboard/supply-dashboard.component').then(m => m.SupplyDashboardComponent) },
           { path: 'supply-settings', loadComponent: () => import('./pages/admin/supply-settings/supply-settings.component').then(m => m.SupplySettingsComponent) },
           { path: 'notifications', loadComponent: () => import('./pages/admin/notifications/notifications.component').then(m => m.NotificationsComponent) },
-          { path: 'audit', loadComponent: () => import('./pages/admin/audit-logs/audit-logs.component').then(m => m.AuditLogsComponent) }
+          { path: 'audit', loadComponent: () => import('./pages/admin/audit-logs/audit-logs.component').then(m => m.AuditLogsComponent) },
+          { path: 'clients-anonymize', loadComponent: () => import('./pages/admin/clients-anonymize/clients-anonymize.component').then(m => m.ClientsAnonymizeComponent) }
         ]
       },
 
@@ -46,6 +47,8 @@ export const routes: Routes = [
           { path: '', loadComponent: () => import('./pages/receptionist/receptionist-main/receptionist-main.component').then(m => m.ReceptionistMainComponent) },
           { path: 'clients', loadComponent: () => import('./pages/receptionist/clients/clients.component').then(m => m.ClientsComponent) },
           { path: 'create-order', loadComponent: () => import('./pages/receptionist/create-order/create-order.component').then(m => m.CreateOrderComponent) },
+          // P3: legacy URL alias — redirects to canonical create-order path
+          { path: 'new-order', redirectTo: 'create-order', pathMatch: 'full' },
           { path: 'orders', loadComponent: () => import('./pages/receptionist/search-orders/search-orders.component').then(m => m.SearchOrdersComponent) },
           { path: 'payments', loadComponent: () => import('./pages/receptionist/payments/payments.component').then(m => m.PaymentsComponent) }
         ]

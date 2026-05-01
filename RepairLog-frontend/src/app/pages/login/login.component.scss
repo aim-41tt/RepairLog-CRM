@@ -4,10 +4,12 @@
   justify-content: center;
   min-height: 100vh;
   background: var(--bg);
+  padding: 16px;
 }
 
 .login-card {
   width: 360px;
+  max-width: 100%;
 
   &__title {
     text-align: center;
@@ -24,5 +26,17 @@
   &__submit {
     width: 100%;
     margin-top: 24px;
+    justify-content: center;
+  }
+
+  @media (max-width: 480px) {
+    width: 100%;
+    padding: 20px 16px;
+
+    &__title {
+      font-size: 18px;
+      margin-bottom: 16px;
+    }
+    &__submit { margin-top: 16px; }
   }
 }
