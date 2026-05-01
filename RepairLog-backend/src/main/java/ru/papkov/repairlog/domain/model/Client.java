@@ -36,9 +36,9 @@ public class Client extends BaseEntity {
 	private String patronymic;
 
 	/**
-	 * Дата рождения клиента.
+	 * Дата рождения клиента (опционально — B-16).
 	 */
-	@Column(name = "date_birth", nullable = false)
+	@Column(name = "date_birth")
 	private LocalDate dateBirth;
 
 	/**

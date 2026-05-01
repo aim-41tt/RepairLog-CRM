@@ -20,14 +20,50 @@ import java.util.Optional;
 @Repository
 public interface RepairOrderRepository extends JpaRepository<RepairOrder, Long> {
 
-    Optional<RepairOrder> findByOrderNumber(String orderNumber);
-    
-    List<RepairOrder> findByClient(Client client);
-    
+    @Query("SELECT ro FROM RepairOrder ro " +
+           "LEFT JOIN FETCH ro.client " +
+           "LEFT JOIN FETCH ro.device d " +
+           "LEFT JOIN FETCH d.deviceType " +
+           "LEFT JOIN FETCH d.model m " +
+           "LEFT JOIN FETCH m.brand " +
+           "LEFT JOIN FETCH ro.acceptedBy " +
+           "LEFT JOIN FETCH ro.assignedMaster " +
+           "LEFT JOIN FETCH ro.currentStatus " +
+           "LEFT JOIN FETCH ro.priority " +
+           "WHERE ro.orderNumber = :orderNumber")
+    Optional<RepairOrder> findByOrderNumber(@Param("orderNumber") String orderNumber);
+
+    @Query("SELECT ro FROM RepairOrder ro " +
+           "LEFT JOIN FETCH ro.client " +
+           "LEFT JOIN FETCH ro.device d " +
+           "LEFT JOIN FETCH d.deviceType " +
+           "LEFT JOIN FETCH d.model m " +
+           "LEFT JOIN FETCH m.brand " +
+           "LEFT JOIN FETCH ro.acceptedBy " +
+           "LEFT JOIN FETCH ro.assignedMaster " +
+           "LEFT JOIN FETCH ro.currentStatus " +
+           "LEFT JOIN FETCH ro.priority " +
+           "WHERE ro.id = :id")
+    Optional<RepairOrder> findByIdWithDetails(@Param("id") Long id);
+
+    @Query("SELECT ro FROM RepairOrder ro " +
+           "LEFT JOIN FETCH ro.client " +
+           "LEFT JOIN FETCH ro.device d " +
+           "LEFT JOIN FETCH d.deviceType " +
+           "LEFT JOIN FETCH d.model m " +
+           "LEFT JOIN FETCH m.brand " +
+           "LEFT JOIN FETCH ro.acceptedBy " +
+           "LEFT JOIN FETCH ro.assignedMaster " +
+           "LEFT JOIN FETCH ro.currentStatus " +
+           "LEFT JOIN FETCH ro.priority " +
+           "WHERE ro.client = :client " +
+           "ORDER BY ro.createdAt DESC")
+    List<RepairOrder> findByClient(@Param("client") Client client);
+
     List<RepairOrder> findByDevice(Device device);
-    
+
     List<RepairOrder> findByAssignedMaster(Employee master);
-    
+
     List<RepairOrder> findByCurrentStatus(RepairStatus status);
     
     @Query("SELECT ro FROM RepairOrder ro " +
@@ -71,9 +107,10 @@ public interface RepairOrderRepository extends JpaRepository<RepairOrder, Long> 
            "LEFT JOIN FETCH d.model m " +
            "LEFT JOIN FETCH m.brand " +
            "LEFT JOIN FETCH ro.acceptedBy " +
-           "LEFT JOIN FETCH ro.currentStatus " +
+           "LEFT JOIN FETCH ro.currentStatus s " +
            "LEFT JOIN FETCH ro.priority " +
            "WHERE ro.assignedMaster IS NULL " +
+           "AND s.isFinal = false " +
            "ORDER BY ro.priority.sortOrder ASC, ro.createdAt ASC")
     List<RepairOrder> findUnassignedOrders();
     
@@ -93,9 +130,9 @@ public interface RepairOrderRepository extends JpaRepository<RepairOrder, Long> 
            "LEFT JOIN FETCH ro.assignedMaster " +
            "LEFT JOIN FETCH ro.currentStatus " +
            "LEFT JOIN FETCH ro.priority " +
-           "WHERE ro.orderNumber LIKE %:query% " +
+           "WHERE ro.orderNumber LIKE CONCAT('%', :query, '%') " +
            "OR LOWER(c.surname) LIKE LOWER(CONCAT('%', :query, '%')) " +
-           "OR c.phone LIKE %:query% " +
+           "OR c.phone LIKE CONCAT('%', :query, '%') " +
            "OR LOWER(d.serialNumber) LIKE LOWER(CONCAT('%', :query, '%')) " +
            "ORDER BY ro.createdAt DESC")
     List<RepairOrder> searchMultiField(@Param("query") String query);

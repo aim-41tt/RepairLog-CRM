@@ -5,7 +5,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.papkov.repairlog.application.dto.inventory.CreateInventoryItemRequest;
-import ru.papkov.repairlog.application.dto.inventory.InventoryItemResponse;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.*;
 import ru.papkov.repairlog.domain.repository.*;
@@ -16,11 +15,13 @@ import ru.papkov.repairlog.application.dto.monitoring.PriceUpdateWebhookRequest;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Сервис управления складом.
  * Поддерживает приход, расход, резерв, списание товаров.
+ * <p>
+ * Возвращает entity — DTO-конверсия выполняется в контроллерах через маппер.
+ * </p>
  *
  * @author aim-41tt
  */
@@ -48,20 +49,19 @@ public class InventoryService {
     }
 
     @Transactional(readOnly = true)
-    public List<InventoryItemResponse> getAll() {
-        return inventoryItemRepository.findByInStockTrue().stream()
-                .map(this::toResponse).collect(Collectors.toList());
+    public List<InventoryItem> getAll() {
+        return inventoryItemRepository.findByInStockTrue();
     }
 
     @Transactional(readOnly = true)
-    public Page<InventoryItemResponse> getAll(Pageable pageable) {
+    public Page<InventoryItem> getAll(Pageable pageable) {
         // Используем findByInStockTrue для единообразия с getAll() (не-pageable версией)
-        return inventoryItemRepository.findByInStockTrue(pageable).map(this::toResponse);
+        return inventoryItemRepository.findByInStockTrue(pageable);
     }
 
     @Transactional(readOnly = true)
-    public InventoryItemResponse getById(Long id) {
-        return toResponse(findItem(id));
+    public InventoryItem getById(Long id) {
+        return findItem(id);
     }
 
     /**
@@ -70,7 +70,7 @@ public class InventoryService {
      * подарок, возврат от клиента, излишки, найденное на складе и т.д.
      */
     @Transactional
-    public InventoryItemResponse createItem(CreateInventoryItemRequest request, String adminLogin) {
+    public InventoryItem createItem(CreateInventoryItemRequest request, String adminLogin) {
         Employee employee = employeeRepository.findByLogin(adminLogin)
                 .orElseThrow(() -> new EntityNotFoundException("Сотрудник не найден: " + adminLogin));
 
@@ -79,7 +79,13 @@ public class InventoryService {
 
         InventoryItem item = new InventoryItem();
         item.setName(request.getName());
-        item.setSerialNumber(request.getPartNumber());
+        // partNumber используется как serialNumber только для штучной позиции (quantity == 1):
+        // DB CHECK chk_serial_quantity запрещает serialNumber + quantity != 1.
+        // Если quantity > 1, partNumber игнорируется (не сохраняется) — фронт должен предупреждать пользователя.
+        if (request.getPartNumber() != null && !request.getPartNumber().isBlank()
+                && request.getQuantity() != null && request.getQuantity() == 1) {
+            item.setSerialNumber(request.getPartNumber());
+        }
         item.setDegreeWear(degreeWear);
         item.setIsDevice(false);
         item.setUnitPrice(request.getSellingPrice() != null ? request.getSellingPrice() : java.math.BigDecimal.ZERO);
@@ -102,23 +108,24 @@ public class InventoryService {
         log.info("Создана складская позиция '{}' (qty={}) администратором {}",
                 saved.getName(), saved.getQuantity(), adminLogin);
 
-        return toResponse(saved);
+        return saved;
     }
 
     @Transactional(readOnly = true)
-    public List<InventoryItemResponse> search(String query) {
-        return inventoryItemRepository.findByNameContainingIgnoreCase(query).stream()
-                .map(this::toResponse).collect(Collectors.toList());
+    public List<InventoryItem> search(String query) {
+        return inventoryItemRepository.findByNameContainingIgnoreCase(query);
     }
 
     @Transactional(readOnly = true)
-    public List<InventoryItemResponse> getLowStock() {
-        return inventoryItemRepository.findLowStockItems().stream()
-                .map(this::toResponse).collect(Collectors.toList());
+    public List<InventoryItem> getLowStock() {
+        return inventoryItemRepository.findLowStockItems();
     }
 
     /**
      * Списание товара для ремонта.
+     * Для серийных позиций (serialNumber != null) всегда списывается 1 штука целиком
+     * и позиция помечается как не в наличии (inStock = false), quantity остаётся = 1,
+     * чтобы не нарушать DB CHECK-ограничение chk_serial_quantity.
      */
     @Transactional
     public void consumeForRepair(Long itemId, int quantity, Long repairOrderId, String employeeLogin) {
@@ -128,13 +135,32 @@ public class InventoryService {
         Employee employee = employeeRepository.findByLogin(employeeLogin)
                 .orElseThrow(() -> new EntityNotFoundException("Сотрудник не найден"));
 
-        item.decreaseQuantity(quantity);
+        int actualQty;
+        if (item.getSerialNumber() != null) {
+            // Серийный номер — уникальное устройство, всегда списываем целиком
+            actualQty = 1;
+            item.setInStock(false);
+            // quantity намеренно оставляем = 1 (DB: chk_serial_quantity запрещает quantity = 0)
+        } else {
+            actualQty = quantity;
+            item.decreaseQuantity(actualQty);
+        }
         inventoryItemRepository.save(item);
 
         InventoryMovement movement = new InventoryMovement(
-                item, InventoryMovement.MovementType.РАСХОД, quantity,
+                item, InventoryMovement.MovementType.РАСХОД, actualQty,
                 order, null, employee, "Списание для ремонта заказа " + order.getOrderNumber());
         inventoryMovementRepository.save(movement);
+    }
+
+    /**
+     * Удалить складскую позицию (ADMIN).
+     */
+    @Transactional
+    public void deleteItem(Long itemId) {
+        InventoryItem item = findItem(itemId);
+        inventoryItemRepository.delete(item);
+        log.info("Складская позиция id={} '{}' удалена", itemId, item.getName());
     }
 
     /**
@@ -182,7 +208,7 @@ public class InventoryService {
     // ========== Helpers ==========
 
     private InventoryItem findItem(Long id) {
-        return inventoryItemRepository.findById(id)
+        return inventoryItemRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new EntityNotFoundException("Товар не найден: " + id));
     }
 
@@ -190,40 +216,7 @@ public class InventoryService {
      * Получить все позиции, нуждающиеся в дозаказе (для авто-заказа).
      */
     @Transactional(readOnly = true)
-    public List<InventoryItemResponse> getItemsNeedingReorder() {
-        return inventoryItemRepository.findItemsNeedingReorder().stream()
-                .map(this::toResponse).collect(Collectors.toList());
-    }
-
-    private InventoryItemResponse toResponse(InventoryItem item) {
-        InventoryItemResponse r = new InventoryItemResponse();
-        r.setId(item.getId());
-        r.setName(item.getName());
-        r.setSerialNumber(item.getSerialNumber());
-        r.setDegreeWearName(item.getDegreeWear().getName());
-        r.setDevice(item.getIsDevice());
-        r.setUnitPrice(item.getUnitPrice());
-        r.setQuantity(item.getQuantity());
-        r.setInStock(item.getInStock());
-        r.setMinStockLevel(item.getMinStockLevel());
-        r.setCreatedAt(item.getCreatedAt());
-
-        // новые поля supply management
-        if (item.getPreferredSupplier() != null) {
-            r.setPreferredSupplierId(item.getPreferredSupplier().getId());
-            r.setPreferredSupplierName(item.getPreferredSupplier().getName());
-        }
-        r.setLastPurchasePrice(item.getLastPurchasePrice());
-        r.setCurrentMarketPrice(item.getCurrentMarketPrice());
-        r.setPriceUpdatedAt(item.getPriceUpdatedAt());
-        r.setReorderQuantity(item.getReorderQuantity());
-        r.setPackSize(item.getPackSize());
-
-        // определяем статус запаса
-        if (item.getQuantity() == 0) r.setStockStatus("OUT_OF_STOCK");
-        else if (item.isBelowMinStock()) r.setStockStatus("LOW_STOCK");
-        else r.setStockStatus("GOOD_STOCK");
-
-        return r;
+    public List<InventoryItem> getItemsNeedingReorder() {
+        return inventoryItemRepository.findItemsNeedingReorder();
     }
 }

@@ -11,7 +11,6 @@ import ru.papkov.repairlog.application.dto.monitoring.OrderStatusWebhookRequest;
 import ru.papkov.repairlog.application.dto.monitoring.PriceUpdateWebhookRequest;
 import ru.papkov.repairlog.application.service.InventoryService;
 import ru.papkov.repairlog.application.service.SupplyRequestService;
-import ru.papkov.repairlog.domain.repository.SupplierRepository;
 import ru.papkov.repairlog.infrastructure.security.webhook.WebhookSignatureValidator;
 
 import java.time.Duration;
@@ -38,7 +37,6 @@ public class WebhookController {
     private final ObjectMapper objectMapper;
 
     public WebhookController(InventoryService inventoryService,
-                              SupplierRepository supplierRepository,
                               SupplyRequestService supplyRequestService,
                               WebhookSignatureValidator signatureValidator,
                               StringRedisTemplate redisTemplate,

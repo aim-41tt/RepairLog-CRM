@@ -15,15 +15,16 @@ import ru.papkov.repairlog.domain.model.enums.SupplyRequestSource;
 import ru.papkov.repairlog.domain.repository.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Сервис управления заявками на поставку.
  * Создание заявок техниками, авто-формирование, подтверждение администратором, приёмка на склад.
+ * <p>
+ * Возвращает entity — DTO-конверсия выполняется в контроллерах через маппер.
+ * </p>
  *
  * @author aim-41tt
  */
@@ -68,40 +69,34 @@ public class SupplyRequestService {
 
     // ========== Чтение ==========
 
-    public List<SupplyRequestResponse> getAll() {
-        return supplyRequestRepository.findAll().stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public List<SupplyRequest> getAll() {
+        return supplyRequestRepository.findAll();
     }
 
-    public Page<SupplyRequestResponse> getAll(Pageable pageable) {
-        return supplyRequestRepository.findAll(pageable).map(this::toResponse);
+    public Page<SupplyRequest> getAll(Pageable pageable) {
+        return supplyRequestRepository.findAll(pageable);
     }
 
-    public List<SupplyRequestResponse> getByStatus(String statusName) {
+    public List<SupplyRequest> getByStatus(String statusName) {
         SupplyRequestStatus status = statusRepository.findByName(statusName)
                 .orElseThrow(() -> new EntityNotFoundException("Статус не найден: " + statusName));
-        return supplyRequestRepository.findByStatusOrderByCreatedAtDesc(status).stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+        return supplyRequestRepository.findByStatusOrderByCreatedAtDesc(status);
     }
 
-    public SupplyRequestResponse getById(Long id) {
-        return toResponse(findById(id));
+    public SupplyRequest getById(Long id) {
+        return findById(id);
     }
 
-    public List<SupplyRequestResponse> getByEmployee(String login) {
+    public List<SupplyRequest> getByEmployee(String login) {
         Employee employee = employeeRepository.findByLogin(login)
                 .orElseThrow(() -> new EntityNotFoundException("Сотрудник не найден"));
-        return supplyRequestRepository.findByRequestedBy(employee).stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+        return supplyRequestRepository.findByRequestedBy(employee);
     }
 
     // ========== Создание (ручное — техник/админ) ==========
 
     @Transactional
-    public SupplyRequestResponse create(CreateSupplyRequestRequest request, String requestedByLogin) {
+    public SupplyRequest create(CreateSupplyRequestRequest request, String requestedByLogin) {
         Employee requestedBy = employeeRepository.findByLogin(requestedByLogin)
                 .orElseThrow(() -> new EntityNotFoundException("Сотрудник не найден"));
 
@@ -137,13 +132,13 @@ public class SupplyRequestService {
         supplyRequestRepository.save(saved);
 
         log.info("Создана заявка на поставку {} сотрудником {}", requestNumber, requestedByLogin);
-        return toResponse(saved);
+        return saved;
     }
 
     // ========== Управление позициями заявки ==========
 
     @Transactional
-    public SupplyRequestResponse addItem(Long supplyRequestId, CreateSupplyRequestItemRequest itemReq) {
+    public SupplyRequest addItem(Long supplyRequestId, CreateSupplyRequestItemRequest itemReq) {
         SupplyRequest request = findById(supplyRequestId);
         validateEditable(request);
 
@@ -166,11 +161,11 @@ public class SupplyRequestService {
 
         recalcTotal(request);
         log.info("Добавлена позиция '{}' в заявку {}", itemReq.getItemName(), request.getRequestNumber());
-        return toResponse(supplyRequestRepository.save(request));
+        return supplyRequestRepository.save(request);
     }
 
     @Transactional
-    public SupplyRequestResponse updateItem(Long supplyRequestId, Long itemId, CreateSupplyRequestItemRequest itemReq) {
+    public SupplyRequest updateItem(Long supplyRequestId, Long itemId, CreateSupplyRequestItemRequest itemReq) {
         SupplyRequest request = findById(supplyRequestId);
         validateEditable(request);
 
@@ -189,11 +184,11 @@ public class SupplyRequestService {
 
         recalcTotal(request);
         log.info("Обновлена позиция {} в заявке {}", itemId, request.getRequestNumber());
-        return toResponse(supplyRequestRepository.save(request));
+        return supplyRequestRepository.save(request);
     }
 
     @Transactional
-    public SupplyRequestResponse deleteItem(Long supplyRequestId, Long itemId) {
+    public SupplyRequest deleteItem(Long supplyRequestId, Long itemId) {
         SupplyRequest request = findById(supplyRequestId);
         validateEditable(request);
 
@@ -208,14 +203,14 @@ public class SupplyRequestService {
 
         recalcTotal(request);
         log.info("Удалена позиция {} из заявки {}", itemId, request.getRequestNumber());
-        return toResponse(supplyRequestRepository.save(request));
+        return supplyRequestRepository.save(request);
     }
 
     @Transactional
-    public SupplyRequestResponse updateComment(Long id, String comment) {
+    public SupplyRequest updateComment(Long id, String comment) {
         SupplyRequest request = findById(id);
         request.setComment(comment);
-        return toResponse(supplyRequestRepository.save(request));
+        return supplyRequestRepository.save(request);
     }
 
     private void validateEditable(SupplyRequest request) {
@@ -277,7 +272,7 @@ public class SupplyRequestService {
     // ========== Жизненный цикл заявки ==========
 
     @Transactional
-    public SupplyRequestResponse approve(Long id, String approvedByLogin) {
+    public SupplyRequest approve(Long id, String approvedByLogin) {
         SupplyRequest request = findById(id);
         String currentStatus = request.getStatus().getName();
         if (!SupplyStatusConstants.NEW.equals(currentStatus)
@@ -293,33 +288,33 @@ public class SupplyRequestService {
         request.setApprovedBy(approvedBy);
 
         log.info("Заявка {} подтверждена администратором {}", request.getRequestNumber(), approvedByLogin);
-        return toResponse(supplyRequestRepository.save(request));
+        return supplyRequestRepository.save(request);
     }
 
     @Transactional
-    public SupplyRequestResponse markOrdered(Long id) {
+    public SupplyRequest markOrdered(Long id) {
         SupplyRequest request = findById(id);
         validateStatusTransition(request, SupplyStatusConstants.APPROVED, SupplyStatusConstants.ORDERED);
 
         request.setStatus(getStatus(SupplyStatusConstants.ORDERED));
 
         log.info("Заявка {} отмечена как заказанная", request.getRequestNumber());
-        return toResponse(supplyRequestRepository.save(request));
+        return supplyRequestRepository.save(request);
     }
 
     @Transactional
-    public SupplyRequestResponse markInTransit(Long id) {
+    public SupplyRequest markInTransit(Long id) {
         SupplyRequest request = findById(id);
         validateStatusTransition(request, SupplyStatusConstants.ORDERED, SupplyStatusConstants.IN_TRANSIT);
 
         request.setStatus(getStatus(SupplyStatusConstants.IN_TRANSIT));
 
         log.info("Заявка {} в пути", request.getRequestNumber());
-        return toResponse(supplyRequestRepository.save(request));
+        return supplyRequestRepository.save(request);
     }
 
     @Transactional
-    public SupplyRequestResponse markDelivered(Long id, String deliveredByLogin) {
+    public SupplyRequest markDelivered(Long id, String deliveredByLogin) {
         SupplyRequest request = findById(id);
         String currentStatus = request.getStatus().getName();
         if (!SupplyStatusConstants.ORDERED.equals(currentStatus)
@@ -362,11 +357,11 @@ public class SupplyRequestService {
         }
 
         log.info("Заявка {} отмечена как доставленная, склад пополнен", request.getRequestNumber());
-        return toResponse(supplyRequestRepository.save(request));
+        return supplyRequestRepository.save(request);
     }
 
     @Transactional
-    public SupplyRequestResponse cancel(Long id) {
+    public SupplyRequest cancel(Long id) {
         SupplyRequest request = findById(id);
         if (SupplyStatusConstants.DELIVERED.equals(request.getStatus().getName())) {
             throw new BusinessLogicException("Нельзя отменить доставленную заявку");
@@ -374,11 +369,11 @@ public class SupplyRequestService {
 
         request.setStatus(getStatus(SupplyStatusConstants.CANCELLED));
         log.info("Заявка {} отменена", request.getRequestNumber());
-        return toResponse(supplyRequestRepository.save(request));
+        return supplyRequestRepository.save(request);
     }
 
     @Transactional
-    public SupplyRequestResponse assignSupplier(Long id, Long supplierId) {
+    public SupplyRequest assignSupplier(Long id, Long supplierId) {
         SupplyRequest request = findById(id);
 
         // Нельзя менять поставщика у завершённых или отменённых заявок
@@ -394,7 +389,7 @@ public class SupplyRequestService {
 
         request.setSupplier(supplier);
         log.info("К заявке {} привязан поставщик {}", request.getRequestNumber(), supplier.getName());
-        return toResponse(supplyRequestRepository.save(request));
+        return supplyRequestRepository.save(request);
     }
 
     @Transactional
@@ -410,7 +405,7 @@ public class SupplyRequestService {
     // ========== Оплата поставщикам ==========
 
     @Transactional
-    public SupplierPaymentResponse recordPayment(CreateSupplierPaymentRequest request, String adminLogin) {
+    public SupplierPayment recordPayment(CreateSupplierPaymentRequest request, String adminLogin) {
         SupplyRequest supplyRequest = findById(request.getSupplyRequestId());
 
         if (!SupplyStatusConstants.DELIVERED.equals(supplyRequest.getStatus().getName())) {
@@ -441,17 +436,15 @@ public class SupplyRequestService {
         log.info("Записана оплата {} руб. по заявке {} администратором {}",
                 saved.getPaidAmount(), supplyRequest.getRequestNumber(), adminLogin);
 
-        return toPaymentResponse(saved);
+        return saved;
     }
 
-    public List<SupplierPaymentResponse> getPayments(Long supplyRequestId) {
-        return supplierPaymentRepository.findBySupplyRequestId(supplyRequestId).stream()
-                .map(this::toPaymentResponse)
-                .collect(Collectors.toList());
+    public List<SupplierPayment> getPayments(Long supplyRequestId) {
+        return supplierPaymentRepository.findBySupplyRequestId(supplyRequestId);
     }
 
     @Transactional
-    public SupplierInvoiceResponse createInvoice(CreateSupplierInvoiceRequest request) {
+    public SupplierInvoice createInvoice(CreateSupplierInvoiceRequest request) {
         SupplyRequest supplyRequest = findById(request.getSupplyRequestId());
 
         // Счёт можно создать только для заявки, которая уже подтверждена или в работе
@@ -480,13 +473,11 @@ public class SupplyRequestService {
         SupplierInvoice saved = supplierInvoiceRepository.save(invoice);
         log.info("Привязан счёт {} к заявке {}", saved.getInvoiceNumber(), supplyRequest.getRequestNumber());
 
-        return toInvoiceResponse(saved);
+        return saved;
     }
 
-    public List<SupplierInvoiceResponse> getInvoices(Long supplyRequestId) {
-        return supplierInvoiceRepository.findBySupplyRequestId(supplyRequestId).stream()
-                .map(this::toInvoiceResponse)
-                .collect(Collectors.toList());
+    public List<SupplierInvoice> getInvoices(Long supplyRequestId) {
+        return supplierInvoiceRepository.findBySupplyRequestId(supplyRequestId);
     }
 
     // ========== Вспомогательные методы ==========
@@ -539,75 +530,5 @@ public class SupplyRequestService {
             supplyRequestItemRepository.save(item);
         }
         return total;
-    }
-
-    private SupplyRequestResponse toResponse(SupplyRequest sr) {
-        SupplyRequestResponse r = new SupplyRequestResponse();
-        r.setId(sr.getId());
-        r.setRequestNumber(sr.getRequestNumber());
-        r.setSupplierName(sr.getSupplier() != null ? sr.getSupplier().getName() : null);
-        r.setSupplierId(sr.getSupplier() != null ? sr.getSupplier().getId() : null);
-        r.setStatusName(sr.getStatus() != null ? sr.getStatus().getName() : null);
-        r.setRequestedByName(sr.getRequestedBy() != null ? sr.getRequestedBy().getFullName() : null);
-        r.setApprovedByName(sr.getApprovedBy() != null ? sr.getApprovedBy().getFullName() : null);
-        r.setTotalAmount(sr.getTotalAmount());
-        r.setComment(sr.getComment());
-        r.setCreatedAt(sr.getCreatedAt());
-        r.setExpectedDeliveryDate(sr.getExpectedDeliveryDate());
-        r.setSource(sr.getSource() != null ? sr.getSource().name() : null);
-        r.setExternalOrderId(sr.getExternalOrderId());
-        r.setExternalOrderStatus(sr.getExternalOrderStatus());
-
-        if (sr.getRelatedRepairOrder() != null) {
-            r.setRelatedRepairOrderId(sr.getRelatedRepairOrder().getId());
-            r.setRelatedOrderNumber(sr.getRelatedRepairOrder().getOrderNumber());
-        }
-
-        if (sr.getItems() != null) {
-            r.setItems(sr.getItems().stream().map(item -> {
-                SupplyRequestItemResponse ir = new SupplyRequestItemResponse();
-                ir.setId(item.getId());
-                ir.setItemName(item.getItemName());
-                ir.setPartNumber(item.getPartNumber());
-                ir.setQuantity(item.getQuantity());
-                ir.setUnitPrice(item.getUnitPrice());
-                ir.setTotalPrice(item.getTotalPrice());
-                ir.setInventoryItemId(item.getInventoryItem() != null ? item.getInventoryItem().getId() : null);
-                ir.setInventoryItemName(item.getInventoryItem() != null ? item.getInventoryItem().getName() : null);
-                return ir;
-            }).collect(Collectors.toList()));
-        }
-
-        return r;
-    }
-
-    private SupplierPaymentResponse toPaymentResponse(SupplierPayment p) {
-        SupplierPaymentResponse r = new SupplierPaymentResponse();
-        r.setId(p.getId());
-        r.setSupplyRequestId(p.getSupplyRequest() != null ? p.getSupplyRequest().getId() : null);
-        r.setRequestNumber(p.getSupplyRequest() != null ? p.getSupplyRequest().getRequestNumber() : null);
-        r.setPaidAmount(p.getPaidAmount());
-        r.setPaymentMethod(p.getPaymentMethod() != null ? p.getPaymentMethod().name() : null);
-        r.setPaidAt(p.getPaidAt());
-        r.setPaidByName(p.getPaidBy() != null ? p.getPaidBy().getFullName() : null);
-        r.setTransactionId(p.getTransactionId());
-        r.setComment(p.getComment());
-        return r;
-    }
-
-    private SupplierInvoiceResponse toInvoiceResponse(SupplierInvoice inv) {
-        SupplierInvoiceResponse r = new SupplierInvoiceResponse();
-        r.setId(inv.getId());
-        r.setSupplyRequestId(inv.getSupplyRequest() != null ? inv.getSupplyRequest().getId() : null);
-        r.setRequestNumber(inv.getSupplyRequest() != null ? inv.getSupplyRequest().getRequestNumber() : null);
-        r.setSupplierId(inv.getSupplier() != null ? inv.getSupplier().getId() : null);
-        r.setSupplierName(inv.getSupplier() != null ? inv.getSupplier().getName() : null);
-        r.setInvoiceNumber(inv.getInvoiceNumber());
-        r.setInvoiceDate(inv.getInvoiceDate());
-        r.setTotalAmount(inv.getTotalAmount());
-        r.setDueDate(inv.getDueDate());
-        r.setStatus(inv.getStatus() != null ? inv.getStatus().name() : null);
-        r.setCreatedAt(inv.getCreatedAt());
-        return r;
     }
 }

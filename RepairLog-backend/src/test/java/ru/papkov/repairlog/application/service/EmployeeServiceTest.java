@@ -9,7 +9,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import ru.papkov.repairlog.application.dto.employee.CreateEmployeeRequest;
-import ru.papkov.repairlog.application.dto.employee.EmployeeResponse;
 import ru.papkov.repairlog.application.dto.employee.UpdateEmployeeRequest;
 import ru.papkov.repairlog.domain.exception.BusinessLogicException;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
@@ -70,11 +69,11 @@ class EmployeeServiceTest {
     void getAllEmployees_returnsList() {
         when(employeeRepository.findAll()).thenReturn(List.of(testEmployee));
 
-        List<EmployeeResponse> result = employeeService.getAllEmployees();
+        List<Employee> result = employeeService.getAllEmployees();
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getLogin()).isEqualTo("ivanov");
-        assertThat(result.get(0).getRoles()).contains("TECHNICIAN");
+        assertThat(result.get(0).getRoles()).anyMatch(r -> "TECHNICIAN".equals(r.getName()));
     }
 
     @Test
@@ -82,7 +81,7 @@ class EmployeeServiceTest {
     void getById_returnsEmployee() {
         when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
 
-        EmployeeResponse result = employeeService.getById(1L);
+        Employee result = employeeService.getById(1L);
 
         assertThat(result.getId()).isEqualTo(1L);
         assertThat(result.getName()).isEqualTo("Алексей");
@@ -103,7 +102,7 @@ class EmployeeServiceTest {
     void getByRole_returnsList() {
         when(employeeRepository.findByRoleName("TECHNICIAN")).thenReturn(List.of(testEmployee));
 
-        List<EmployeeResponse> result = employeeService.getByRole("TECHNICIAN");
+        List<Employee> result = employeeService.getByRole("TECHNICIAN");
 
         assertThat(result).hasSize(1);
     }
@@ -129,7 +128,7 @@ class EmployeeServiceTest {
             return e;
         });
 
-        EmployeeResponse result = employeeService.create(request);
+        Employee result = employeeService.create(request);
 
         assertThat(result.getName()).isEqualTo("Новый");
         assertThat(result.getLogin()).isEqualTo("new_user");
@@ -179,7 +178,7 @@ class EmployeeServiceTest {
         when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
         when(employeeRepository.save(any(Employee.class))).thenReturn(testEmployee);
 
-        EmployeeResponse result = employeeService.update(1L, request);
+        Employee result = employeeService.update(1L, request);
 
         assertThat(result).isNotNull();
         verify(employeeRepository).save(testEmployee);

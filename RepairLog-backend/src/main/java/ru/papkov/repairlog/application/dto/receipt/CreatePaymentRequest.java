@@ -18,6 +18,7 @@ public class CreatePaymentRequest {
     private BigDecimal paidAmount;
 
     @NotBlank(message = "Способ оплаты обязателен")
+    @Pattern(regexp = "CASH|CARD|TRANSFER|OTHER", message = "Допустимые способы: CASH, CARD, TRANSFER, OTHER")
     private String paymentMethod;
 
     private String transactionId;

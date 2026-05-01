@@ -18,14 +18,40 @@ import java.util.Optional;
 @Repository
 public interface DeviceRepository extends JpaRepository<Device, Long> {
 
-    Optional<Device> findBySerialNumber(String serialNumber);
-    
-    List<Device> findByClient(Client client);
-    
+    @Query("SELECT d FROM Device d " +
+           "LEFT JOIN FETCH d.deviceType " +
+           "LEFT JOIN FETCH d.model m " +
+           "LEFT JOIN FETCH m.brand " +
+           "LEFT JOIN FETCH d.client " +
+           "WHERE d.serialNumber = :serialNumber")
+    Optional<Device> findBySerialNumber(@Param("serialNumber") String serialNumber);
+
+    @Query("SELECT d FROM Device d " +
+           "LEFT JOIN FETCH d.deviceType " +
+           "LEFT JOIN FETCH d.model m " +
+           "LEFT JOIN FETCH m.brand " +
+           "LEFT JOIN FETCH d.client " +
+           "WHERE d.client = :client " +
+           "ORDER BY d.createdAt DESC")
+    List<Device> findByClient(@Param("client") Client client);
+
+    @Query("SELECT d FROM Device d " +
+           "LEFT JOIN FETCH d.deviceType " +
+           "LEFT JOIN FETCH d.model m " +
+           "LEFT JOIN FETCH m.brand " +
+           "LEFT JOIN FETCH d.client " +
+           "WHERE d.id = :id")
+    Optional<Device> findByIdWithDetails(@Param("id") Long id);
+
     List<Device> findByIsClientOwnedTrue();
-    
+
     List<Device> findByIsClientOwnedFalse();
-    
-    @Query("SELECT d FROM Device d WHERE d.client = :client ORDER BY d.createdAt DESC")
+
+    @Query("SELECT d FROM Device d " +
+           "LEFT JOIN FETCH d.deviceType " +
+           "LEFT JOIN FETCH d.model m " +
+           "LEFT JOIN FETCH m.brand " +
+           "LEFT JOIN FETCH d.client " +
+           "WHERE d.client = :client ORDER BY d.createdAt DESC")
     List<Device> findByClientOrderByCreatedAtDesc(@Param("client") Client client);
 }

@@ -40,7 +40,7 @@ public class SecurityAuditLog {
     /**
      * Сотрудник, совершивший действие.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "employee_id")
     private Employee employee;
 

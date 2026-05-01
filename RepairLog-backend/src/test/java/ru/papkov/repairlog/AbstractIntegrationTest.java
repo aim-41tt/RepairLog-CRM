@@ -27,16 +27,22 @@ import org.testcontainers.utility.MountableFile;
 @Testcontainers
 public abstract class AbstractIntegrationTest {
 
-    /**
+    private static final PostgreSQLContainer<?> POSTGRE_SQL_CONTAINER = new PostgreSQLContainer<>(
+            DockerImageName.parse("postgres:latest")
+    );
+
+	private static final GenericContainer<?> GENERIC_CONTAINER = new GenericContainer<>(
+            DockerImageName.parse("redis:latest")
+    );
+
+	/**
      * PostgreSQL контейнер с полной схемой базы данных.
      * Init-скрипт (repairLog-UNIFIED.sql) создаёт все таблицы, индексы,
      * триггеры, хранимые функции и расширение citext.
      */
     @Container
     @ServiceConnection
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
-            DockerImageName.parse("postgres:latest")
-    )
+    static final PostgreSQLContainer<?> postgres = POSTGRE_SQL_CONTAINER
             .withDatabaseName("repairlog_test")
             .withUsername("test")
             .withPassword("test")
@@ -52,8 +58,6 @@ public abstract class AbstractIntegrationTest {
      */
     @Container
     @ServiceConnection(name = "redis")
-    static final GenericContainer<?> redis = new GenericContainer<>(
-            DockerImageName.parse("redis:latest")
-    )
+    static final GenericContainer<?> redis = GENERIC_CONTAINER
             .withExposedPorts(6379);
 }

@@ -7,7 +7,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ru.papkov.repairlog.application.dto.device.DeviceResponse;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.*;
 import ru.papkov.repairlog.domain.repository.*;
@@ -75,14 +74,14 @@ class DeviceServiceTest {
     void getById_returnsDevice() {
         when(deviceRepository.findById(1L)).thenReturn(Optional.of(testDevice));
 
-        DeviceResponse result = deviceService.getById(1L);
+        Device result = deviceService.getById(1L);
 
         assertThat(result.getId()).isEqualTo(1L);
-        assertThat(result.getDeviceTypeName()).isEqualTo("Ноутбук");
-        assertThat(result.getBrandName()).isEqualTo("Apple");
-        assertThat(result.getModelName()).isEqualTo("MacBook Pro");
+        assertThat(result.getDeviceType().getName()).isEqualTo("Ноутбук");
+        assertThat(result.getModel().getBrand().getName()).isEqualTo("Apple");
+        assertThat(result.getModel().getName()).isEqualTo("MacBook Pro");
         assertThat(result.getSerialNumber()).isEqualTo("SN123456");
-        assertThat(result.getClientId()).isEqualTo(1L);
+        assertThat(result.getClient().getId()).isEqualTo(1L);
     }
 
     @Test
@@ -100,10 +99,10 @@ class DeviceServiceTest {
         when(clientRepository.findById(1L)).thenReturn(Optional.of(testClient));
         when(deviceRepository.findByClient(testClient)).thenReturn(List.of(testDevice));
 
-        List<DeviceResponse> result = deviceService.getByClient(1L);
+        List<Device> result = deviceService.getByClient(1L);
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getClientId()).isEqualTo(1L);
+        assertThat(result.get(0).getClient().getId()).isEqualTo(1L);
     }
 
     @Test

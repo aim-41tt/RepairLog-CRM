@@ -23,6 +23,8 @@ public interface InventoryItemMapper {
      */
     @Mapping(target = "degreeWearName", source = "degreeWear.name")
     @Mapping(target = "device", source = "isDevice")
+    @Mapping(target = "preferredSupplierId", source = "preferredSupplier.id")
+    @Mapping(target = "preferredSupplierName", source = "preferredSupplier.name")
     @Mapping(target = "stockStatus", source = ".", qualifiedByName = "calcStockStatus")
     InventoryItemResponse toResponse(InventoryItem item);
 
@@ -35,16 +37,16 @@ public interface InventoryItemMapper {
      * Вычисляет статус наличия на складе.
      *
      * @param item позиция склада
-     * @return строковое представление статуса ("В НАЛИЧИИ", "МАЛО", "НЕТ В НАЛИЧИИ")
+     * @return строковое представление статуса ("GOOD_STOCK", "LOW_STOCK", "OUT_OF_STOCK")
      */
     @Named("calcStockStatus")
     default String calcStockStatus(InventoryItem item) {
-        if (!Boolean.TRUE.equals(item.getInStock()) || item.getQuantity() <= 0) {
-            return "НЕТ В НАЛИЧИИ";
+        if (item.getQuantity() == null || item.getQuantity() == 0) {
+            return "OUT_OF_STOCK";
         }
-        if (item.getQuantity() <= item.getMinStockLevel()) {
-            return "МАЛО";
+        if (item.isBelowMinStock()) {
+            return "LOW_STOCK";
         }
-        return "В НАЛИЧИИ";
+        return "GOOD_STOCK";
     }
 }

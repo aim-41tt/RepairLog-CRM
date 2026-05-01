@@ -18,7 +18,9 @@ public class CreateClientRequest {
 
     private String patronymic;
 
-    @NotNull(message = "Дата рождения обязательна")
+    // B-16: dateBirth is no longer required (optional field)
+    // B-13: date must not be in the future
+    @Past(message = "Дата рождения должна быть в прошлом")
     private LocalDate dateBirth;
 
     @NotBlank(message = "Телефон обязателен")
@@ -47,7 +49,7 @@ public class CreateClientRequest {
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
     public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public void setEmail(String email) { this.email = (email == null || email.isBlank()) ? null : email; }
     public boolean isConsentGiven() { return consentGiven; }
     public void setConsentGiven(boolean consentGiven) { this.consentGiven = consentGiven; }
     public boolean isNotificationsEnabled() { return notificationsEnabled; }

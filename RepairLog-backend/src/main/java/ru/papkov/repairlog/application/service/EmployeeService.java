@@ -5,7 +5,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.papkov.repairlog.application.dto.employee.*;
+import ru.papkov.repairlog.application.dto.employee.CreateEmployeeRequest;
+import ru.papkov.repairlog.application.dto.employee.UpdateEmployeeRequest;
+import ru.papkov.repairlog.application.mapper.EmployeeMapper;
 import ru.papkov.repairlog.domain.exception.BusinessLogicException;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.Employee;
@@ -17,11 +19,13 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Сервис управления сотрудниками.
  * CRUD операции и назначение ролей. Доступен только ADMIN.
+ * <p>
+ * Возвращает entity — DTO-конверсия выполняется в контроллерах через {@link EmployeeMapper}.
+ * </p>
  *
  * @author aim-41tt
  */
@@ -31,78 +35,64 @@ public class EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmployeeMapper employeeMapper;
 
     public EmployeeService(EmployeeRepository employeeRepository,
                            RoleRepository roleRepository,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder,
+                           EmployeeMapper employeeMapper) {
         this.employeeRepository = employeeRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.employeeMapper = employeeMapper;
     }
 
     @Transactional(readOnly = true)
-    public List<EmployeeResponse> getAllEmployees() {
-        return employeeRepository.findAll().stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public List<Employee> getAllEmployees() {
+        return employeeRepository.findAll();
     }
 
     @Transactional(readOnly = true)
-    public Page<EmployeeResponse> getAllEmployees(Pageable pageable) {
-        return employeeRepository.findAll(pageable).map(this::toResponse);
+    public Page<Employee> getAllEmployees(Pageable pageable) {
+        return employeeRepository.findAll(pageable);
     }
 
     @Transactional(readOnly = true)
-    public EmployeeResponse getById(Long id) {
-        Employee employee = employeeRepository.findById(id)
+    public Employee getById(Long id) {
+        return employeeRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Сотрудник не найден: " + id));
-        return toResponse(employee);
     }
 
     @Transactional(readOnly = true)
-    public List<EmployeeResponse> getByRole(String roleName) {
-        return employeeRepository.findByRoleName(roleName).stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public List<Employee> getByRole(String roleName) {
+        return employeeRepository.findByRoleName(roleName);
     }
 
     @Transactional
-    public EmployeeResponse create(CreateEmployeeRequest request) {
+    public Employee create(CreateEmployeeRequest request) {
         if (employeeRepository.existsByLogin(request.getLogin())) {
             throw new BusinessLogicException("Логин уже занят: " + request.getLogin());
         }
 
-        Employee employee = new Employee();
-        employee.setName(request.getName());
-        employee.setSurname(request.getSurname());
-        employee.setPatronymic(request.getPatronymic());
-        employee.setDateBirth(request.getDateBirth());
-        employee.setLogin(request.getLogin());
+        Employee employee = employeeMapper.toEntity(request);
         employee.setPassword(passwordEncoder.encode(request.getPassword()));
         employee.setLastPasswordChange(LocalDateTime.now());
+        employee.setRoles(resolveRoles(request.getRoles()));
 
-        Set<Role> roles = resolveRoles(request.getRoles());
-        employee.setRoles(roles);
-
-        Employee saved = employeeRepository.save(employee);
-        return toResponse(saved);
+        return employeeRepository.save(employee);
     }
 
     @Transactional
-    public EmployeeResponse update(Long id, UpdateEmployeeRequest request) {
+    public Employee update(Long id, UpdateEmployeeRequest request) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Сотрудник не найден: " + id));
 
-        if (request.getName() != null) employee.setName(request.getName());
-        if (request.getSurname() != null) employee.setSurname(request.getSurname());
-        if (request.getPatronymic() != null) employee.setPatronymic(request.getPatronymic());
-        if (request.getDateBirth() != null) employee.setDateBirth(request.getDateBirth());
+        employeeMapper.updateEntity(request, employee);
         if (request.getRoles() != null && !request.getRoles().isEmpty()) {
             employee.setRoles(resolveRoles(request.getRoles()));
         }
 
-        Employee saved = employeeRepository.save(employee);
-        return toResponse(saved);
+        return employeeRepository.save(employee);
     }
 
     /**
@@ -142,21 +132,5 @@ public class EmployeeService {
             roles.add(role);
         }
         return roles;
-    }
-
-    private EmployeeResponse toResponse(Employee e) {
-        EmployeeResponse r = new EmployeeResponse();
-        r.setId(e.getId());
-        r.setName(e.getName());
-        r.setSurname(e.getSurname());
-        r.setPatronymic(e.getPatronymic());
-        r.setFullName(e.getFullName());
-        r.setDateBirth(e.getDateBirth());
-        r.setLogin(e.getLogin());
-        r.setBlocked(e.getBlocked());
-        r.setLastLogin(e.getLastLogin());
-        r.setCreatedAt(e.getCreatedAt());
-        r.setRoles(e.getRoles().stream().map(Role::getName).collect(Collectors.toList()));
-        return r;
     }
 }

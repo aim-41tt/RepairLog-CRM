@@ -1,28 +1,38 @@
 package ru.papkov.repairlog.application.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.papkov.repairlog.application.dto.device.DeviceResponse;
-import ru.papkov.repairlog.application.dto.diagnostic.DiagnosticResponse;
-import ru.papkov.repairlog.application.dto.order.RepairOrderResponse;
-import ru.papkov.repairlog.application.dto.receipt.ReceiptResponse;
+import ru.papkov.repairlog.domain.model.Device;
+import ru.papkov.repairlog.domain.model.Diagnostic;
+import ru.papkov.repairlog.domain.model.Receipt;
+import ru.papkov.repairlog.domain.model.ReceiptPayment;
+import ru.papkov.repairlog.domain.model.RepairOrder;
+import ru.papkov.repairlog.domain.model.RepairWork;
 import ru.papkov.repairlog.infrastructure.config.CompanyProperties;
 import ru.papkov.repairlog.infrastructure.integration.DocumentApiClient;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Сервис генерации PDF-документов.
- * Собирает данные из БД и вызывает Document API.
+ * Собирает данные из БД через сервисы (entity) и вызывает Document API.
  *
  * @author aim-41tt
  */
 @Service
 public class DocumentService {
 
+    private static final Logger log = LoggerFactory.getLogger(DocumentService.class);
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final RepairOrderService orderService;
@@ -51,12 +61,19 @@ public class DocumentService {
      */
     @Transactional(readOnly = true)
     public byte[] generateReceipt(Long orderId) {
-        RepairOrderResponse order = orderService.getById(orderId);
-        DeviceResponse device = deviceService.getById(order.getDeviceId());
+        RepairOrder order = orderService.getById(orderId);
+        Device device = order.getDevice();
 
         Map<String, Object> request = buildBase(order, device);
         request.put("deviceCondition", order.getExternalCondition());
-        request.put("estimatedPrice", order.getTotalAmount());
+        // В entity totalAmount живёт в Receipt, не в RepairOrder
+        try {
+            Receipt receipt = receiptService.getByOrderId(orderId);
+            request.put("estimatedPrice", receipt.getTotalAmount());
+        } catch (Exception e) {
+            // Чек может ещё не существовать на этапе приёмки — это штатная ситуация
+            log.debug("Receipt not yet available for order {}: {}", orderId, e.getMessage());
+        }
         request.put("defectDescription", order.getClientComplaint());
 
         return documentApiClient.generateReceipt(request);
@@ -67,25 +84,26 @@ public class DocumentService {
      */
     @Transactional(readOnly = true)
     public byte[] generateCompletionAct(Long orderId) {
-        RepairOrderResponse order = orderService.getById(orderId);
-        DeviceResponse device = deviceService.getById(order.getDeviceId());
-        ReceiptResponse receipt = receiptService.getByOrderId(orderId);
+        RepairOrder order = orderService.getById(orderId);
+        Device device = order.getDevice();
+        Receipt receipt = receiptService.getByOrderId(orderId);
+        List<RepairWork> works = receiptService.getWorksByReceipt(receipt);
+        List<ReceiptPayment> payments = receiptService.getPaymentsByReceipt(receipt);
 
         Map<String, Object> request = buildBase(order, device);
-        request.put("engineerName", order.getAssignedMasterName());
-        request.put("items", mapWorks(receipt.getWorks()));
+        request.put("engineerName", order.getAssignedMaster() != null
+                ? order.getAssignedMaster().getFullName() : null);
+        request.put("items", mapWorks(works));
         request.put("subtotal", receipt.getSubtotal());
         request.put("discount", receipt.getDiscountAmount());
         request.put("total", receipt.getTotalAmount());
         request.put("defectDescription", order.getClientComplaint());
 
         // Сумма уже оплаченного
-        BigDecimal prepayment = receipt.getPayments() != null
-                ? receipt.getPayments().stream()
-                    .map(ReceiptResponse.PaymentResponse::getPaidAmount)
-                    .filter(Objects::nonNull)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-                : BigDecimal.ZERO;
+        BigDecimal prepayment = payments.stream()
+                .map(ReceiptPayment::getPaidAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         request.put("prepayment", prepayment);
 
         return documentApiClient.generateCompletionAct(request);
@@ -96,13 +114,15 @@ public class DocumentService {
      */
     @Transactional(readOnly = true)
     public byte[] generateWarrantyCard(Long orderId) {
-        RepairOrderResponse order = orderService.getById(orderId);
-        DeviceResponse device = deviceService.getById(order.getDeviceId());
-        ReceiptResponse receipt = receiptService.getByOrderId(orderId);
+        RepairOrder order = orderService.getById(orderId);
+        Device device = order.getDevice();
+        Receipt receipt = receiptService.getByOrderId(orderId);
+        List<RepairWork> works = receiptService.getWorksByReceipt(receipt);
 
         Map<String, Object> request = buildBase(order, device);
-        request.put("engineerName", order.getAssignedMasterName());
-        request.put("items", mapWorks(receipt.getWorks()));
+        request.put("engineerName", order.getAssignedMaster() != null
+                ? order.getAssignedMaster().getFullName() : null);
+        request.put("items", mapWorks(works));
         request.put("subtotal", receipt.getSubtotal());
         request.put("discount", receipt.getDiscountAmount());
         request.put("total", receipt.getTotalAmount());
@@ -110,10 +130,11 @@ public class DocumentService {
 
         // Примечания из диагностики
         try {
-            DiagnosticResponse diag = diagnosticService.getByOrderId(orderId);
+            Diagnostic diag = diagnosticService.getByOrderId(orderId);
             request.put("repairNotes", diag.getSolution());
-        } catch (Exception ignored) {
-            // Диагностика может отсутствовать
+        } catch (Exception e) {
+            // Диагностика может отсутствовать — это штатная ситуация
+            log.debug("Diagnostic not available for order {}: {}", orderId, e.getMessage());
         }
 
         return documentApiClient.generateWarrantyCard(request);
@@ -124,19 +145,21 @@ public class DocumentService {
      */
     @Transactional(readOnly = true)
     public byte[] generateRejectionSheet(Long orderId, String rejectionReason) {
-        RepairOrderResponse order = orderService.getById(orderId);
-        DeviceResponse device = deviceService.getById(order.getDeviceId());
+        RepairOrder order = orderService.getById(orderId);
+        Device device = order.getDevice();
 
         Map<String, Object> request = buildBase(order, device);
         request.put("rejectionReason", rejectionReason);
-        request.put("executorName", order.getAssignedMasterName());
+        request.put("executorName", order.getAssignedMaster() != null
+                ? order.getAssignedMaster().getFullName() : null);
         request.put("defectDescription", order.getClientComplaint());
         request.put("deviceCondition", order.getExternalCondition());
 
         // Если есть квитанция с работами — добавляем
         try {
-            ReceiptResponse receipt = receiptService.getByOrderId(orderId);
-            request.put("items", mapWorks(receipt.getWorks()));
+            Receipt receipt = receiptService.getByOrderId(orderId);
+            List<RepairWork> works = receiptService.getWorksByReceipt(receipt);
+            request.put("items", mapWorks(works));
             request.put("subtotal", receipt.getSubtotal());
             request.put("discount", receipt.getDiscountAmount());
             request.put("total", receipt.getTotalAmount());
@@ -149,7 +172,7 @@ public class DocumentService {
 
     // ──────────────────────────────────────────────────────────────────
 
-    private Map<String, Object> buildBase(RepairOrderResponse order, DeviceResponse device) {
+    private Map<String, Object> buildBase(RepairOrder order, Device device) {
         Map<String, Object> map = new HashMap<>();
 
         // Документ
@@ -166,26 +189,35 @@ public class DocumentService {
         map.put("companyMessengers", company.getMessengers());
 
         // Клиент
-        map.put("customerName", order.getClientFullName());
-        map.put("customerPhone", order.getClientPhone());
+        if (order.getClient() != null) {
+            map.put("customerName", order.getClient().getFullName());
+            map.put("customerPhone", order.getClient().getPhone());
+        }
 
         // Устройство
-        String deviceName = String.join(" ",
-                Optional.ofNullable(device.getDeviceTypeName()).orElse(""),
-                Optional.ofNullable(device.getBrandName()).orElse(""),
-                Optional.ofNullable(device.getModelName()).orElse("")
-        ).trim();
-        map.put("deviceName", deviceName);
-        map.put("deviceSerial", device.getSerialNumber());
+        if (device != null) {
+            String deviceTypeName = device.getDeviceType() != null ? device.getDeviceType().getName() : null;
+            String brandName = (device.getModel() != null && device.getModel().getBrand() != null)
+                    ? device.getModel().getBrand().getName() : null;
+            String modelName = device.getModel() != null ? device.getModel().getName() : null;
+
+            String deviceName = String.join(" ",
+                    Optional.ofNullable(deviceTypeName).orElse(""),
+                    Optional.ofNullable(brandName).orElse(""),
+                    Optional.ofNullable(modelName).orElse("")
+            ).trim();
+            map.put("deviceName", deviceName);
+            map.put("deviceSerial", device.getSerialNumber());
+        }
 
         return map;
     }
 
-    private List<Map<String, Object>> mapWorks(List<ReceiptResponse.RepairWorkResponse> works) {
+    private List<Map<String, Object>> mapWorks(List<RepairWork> works) {
         if (works == null) return List.of();
         List<Map<String, Object>> items = new ArrayList<>();
         for (int i = 0; i < works.size(); i++) {
-            ReceiptResponse.RepairWorkResponse w = works.get(i);
+            RepairWork w = works.get(i);
             Map<String, Object> item = new HashMap<>();
             item.put("code", String.valueOf(i + 1));
             item.put("name", w.getDescription());

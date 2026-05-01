@@ -7,7 +7,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.papkov.repairlog.application.dto.notification.NotificationEvent;
-import ru.papkov.repairlog.application.dto.notification.NotificationResponse;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.Client;
 import ru.papkov.repairlog.domain.model.Notification;
@@ -16,13 +15,15 @@ import ru.papkov.repairlog.infrastructure.kafka.NotificationKafkaProducer;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Сервис управления уведомлениями.
  * Просмотр уведомлений по клиенту и заказу.
  * Уведомления создаются автоматически триггерами БД при смене статуса заказа.
  * Отправка через Kafka (если включён) или заглушка.
+ * <p>
+ * Возвращает entity — DTO-конверсия выполняется в контроллерах через маппер.
+ * </p>
  *
  * @author aim-41tt
  */
@@ -50,10 +51,8 @@ public class NotificationService {
      * @param clientId ID клиента
      * @return список уведомлений
      */
-    public List<NotificationResponse> getByClient(Long clientId) {
-        return notificationRepository.findByClientId(clientId).stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public List<Notification> getByClient(Long clientId) {
+        return notificationRepository.findByClientId(clientId);
     }
 
     /**
@@ -62,10 +61,8 @@ public class NotificationService {
      * @param orderId ID заказа
      * @return список уведомлений
      */
-    public List<NotificationResponse> getByOrder(Long orderId) {
-        return notificationRepository.findByRepairOrderId(orderId).stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public List<Notification> getByOrder(Long orderId) {
+        return notificationRepository.findByRepairOrderId(orderId);
     }
 
     /**
@@ -73,10 +70,8 @@ public class NotificationService {
      *
      * @return список уведомлений со статусом PENDING
      */
-    public List<NotificationResponse> getPending() {
-        return notificationRepository.findByStatus(Notification.NotificationStatus.PENDING).stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public List<Notification> getPending() {
+        return notificationRepository.findByStatus(Notification.NotificationStatus.PENDING);
     }
 
     /**
@@ -163,21 +158,5 @@ public class NotificationService {
         }
 
         return event;
-    }
-
-    private NotificationResponse toResponse(Notification n) {
-        NotificationResponse r = new NotificationResponse();
-        r.setId(n.getId());
-        r.setType(n.getNotificationType() != null ? n.getNotificationType().name() : null);
-        r.setClientId(n.getClient() != null ? n.getClient().getId() : null);
-        r.setClientName(n.getClient() != null
-                ? n.getClient().getSurname() + " " + n.getClient().getName() : null);
-        r.setRepairOrderId(n.getRepairOrder() != null ? n.getRepairOrder().getId() : null);
-        r.setOrderNumber(n.getRepairOrder() != null ? n.getRepairOrder().getOrderNumber() : null);
-        r.setStatus(n.getStatus() != null ? n.getStatus().name() : null);
-        r.setMessageBody(n.getMessage());
-        r.setSentAt(n.getSentAt());
-        r.setCreatedAt(n.getCreatedAt());
-        return r;
     }
 }

@@ -15,24 +15,27 @@ import java.util.Optional;
 
 /**
  * Repository для работы с чеками.
- * 
+ *
  * @author aim-41tt
  */
 @Repository
 public interface ReceiptRepository extends JpaRepository<Receipt, Long> {
 
-    Optional<Receipt> findByRepairOrder(RepairOrder repairOrder);
+    @Query("SELECT r FROM Receipt r " +
+           "LEFT JOIN FETCH r.repairOrder " +
+           "WHERE r.repairOrder = :repairOrder")
+    Optional<Receipt> findByRepairOrder(@Param("repairOrder") RepairOrder repairOrder);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM Receipt r WHERE r.id = :id")
     Optional<Receipt> findByIdForUpdate(@Param("id") Long id);
-    
+
     List<Receipt> findByPaymentStatus(Receipt.PaymentStatus status);
-    
+
     List<Receipt> findByLockedTrue();
-    
+
     @Query("SELECT r FROM Receipt r WHERE r.createdAt BETWEEN :startDate AND :endDate " +
            "AND r.paymentStatus = 'FULLY_PAID'")
-    List<Receipt> findPaidReceiptsBetween(@Param("startDate") LocalDateTime startDate, 
-                                           @Param("endDate") LocalDateTime endDate);
+    List<Receipt> findPaidReceiptsBetween(@Param("startDate") LocalDateTime startDate,
+                                          @Param("endDate") LocalDateTime endDate);
 }

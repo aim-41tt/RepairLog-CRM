@@ -7,7 +7,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ru.papkov.repairlog.application.dto.inventory.InventoryItemResponse;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.*;
 import ru.papkov.repairlog.domain.repository.*;
@@ -75,7 +74,7 @@ class InventoryServiceTest {
     void getAll_returnsInStockItems() {
         when(inventoryItemRepository.findByInStockTrue()).thenReturn(List.of(testItem));
 
-        List<InventoryItemResponse> result = inventoryService.getAll();
+        List<InventoryItem> result = inventoryService.getAll();
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getName()).isEqualTo("Экран iPhone 15");
@@ -87,11 +86,12 @@ class InventoryServiceTest {
     void getById_returnsItem() {
         when(inventoryItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
 
-        InventoryItemResponse result = inventoryService.getById(1L);
+        InventoryItem result = inventoryService.getById(1L);
 
         assertThat(result.getId()).isEqualTo(1L);
         assertThat(result.getName()).isEqualTo("Экран iPhone 15");
-        assertThat(result.getStockStatus()).isEqualTo("GOOD_STOCK");
+        // quantity=10, minStockLevel=3 → в норме
+        assertThat(result.getQuantity()).isGreaterThan(result.getMinStockLevel());
     }
 
     @Test
@@ -104,25 +104,26 @@ class InventoryServiceTest {
     }
 
     @Test
-    @DisplayName("getById - LOW_STOCK статус")
+    @DisplayName("getById - LOW_STOCK: количество ниже минимального")
     void getById_lowStockStatus() {
         testItem.setQuantity(2); // ниже minStockLevel=3
         when(inventoryItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
 
-        InventoryItemResponse result = inventoryService.getById(1L);
+        InventoryItem result = inventoryService.getById(1L);
 
-        assertThat(result.getStockStatus()).isEqualTo("LOW_STOCK");
+        assertThat(result.getQuantity()).isLessThan(result.getMinStockLevel());
+        assertThat(result.getQuantity()).isPositive();
     }
 
     @Test
-    @DisplayName("getById - OUT_OF_STOCK статус")
+    @DisplayName("getById - OUT_OF_STOCK: количество равно нулю")
     void getById_outOfStockStatus() {
         testItem.setQuantity(0);
         when(inventoryItemRepository.findById(1L)).thenReturn(Optional.of(testItem));
 
-        InventoryItemResponse result = inventoryService.getById(1L);
+        InventoryItem result = inventoryService.getById(1L);
 
-        assertThat(result.getStockStatus()).isEqualTo("OUT_OF_STOCK");
+        assertThat(result.getQuantity()).isZero();
     }
 
     @Test
@@ -131,7 +132,7 @@ class InventoryServiceTest {
         when(inventoryItemRepository.findByNameContainingIgnoreCase("Экран"))
                 .thenReturn(List.of(testItem));
 
-        List<InventoryItemResponse> result = inventoryService.search("Экран");
+        List<InventoryItem> result = inventoryService.search("Экран");
 
         assertThat(result).hasSize(1);
     }
@@ -181,7 +182,7 @@ class InventoryServiceTest {
         testItem.setQuantity(1);
         when(inventoryItemRepository.findLowStockItems()).thenReturn(List.of(testItem));
 
-        List<InventoryItemResponse> result = inventoryService.getLowStock();
+        List<InventoryItem> result = inventoryService.getLowStock();
 
         assertThat(result).hasSize(1);
     }

@@ -96,11 +96,11 @@ class SupplyRequestServiceTest {
     void getById_returnsRequest() {
         when(supplyRequestRepository.findById(1L)).thenReturn(Optional.of(testRequest));
 
-        SupplyRequestResponse result = supplyRequestService.getById(1L);
+        SupplyRequest result = supplyRequestService.getById(1L);
 
         assertThat(result.getId()).isEqualTo(1L);
         assertThat(result.getRequestNumber()).isEqualTo("SR-20260228-0001");
-        assertThat(result.getStatusName()).isEqualTo("NEW");
+        assertThat(result.getStatus().getName()).isEqualTo("NEW");
     }
 
     @Test
@@ -120,7 +120,7 @@ class SupplyRequestServiceTest {
         when(statusRepository.findByName("APPROVED")).thenReturn(Optional.of(statusApproved));
         when(supplyRequestRepository.save(any())).thenReturn(testRequest);
 
-        SupplyRequestResponse result = supplyRequestService.approve(1L, "admin");
+        SupplyRequest result = supplyRequestService.approve(1L, "admin");
 
         assertThat(testRequest.getStatus()).isEqualTo(statusApproved);
         assertThat(testRequest.getApprovedBy()).isEqualTo(testAdmin);

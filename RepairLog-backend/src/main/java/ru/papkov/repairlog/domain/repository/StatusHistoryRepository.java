@@ -11,14 +11,23 @@ import java.util.List;
 
 /**
  * Repository для работы с историей статусов.
- * 
+ *
  * @author aim-41tt
  */
 @Repository
 public interface StatusHistoryRepository extends JpaRepository<StatusHistory, Long> {
 
-    List<StatusHistory> findByRepairOrderOrderByChangedAtDesc(RepairOrder repairOrder);
-    
-    @Query("SELECT sh FROM StatusHistory sh WHERE sh.repairOrder = :order ORDER BY sh.changedAt ASC")
+    @Query("SELECT sh FROM StatusHistory sh " +
+           "LEFT JOIN FETCH sh.status " +
+           "LEFT JOIN FETCH sh.changedBy " +
+           "WHERE sh.repairOrder = :order " +
+           "ORDER BY sh.changedAt DESC")
+    List<StatusHistory> findByRepairOrderOrderByChangedAtDesc(@Param("order") RepairOrder repairOrder);
+
+    @Query("SELECT sh FROM StatusHistory sh " +
+           "LEFT JOIN FETCH sh.status " +
+           "LEFT JOIN FETCH sh.changedBy " +
+           "WHERE sh.repairOrder = :order " +
+           "ORDER BY sh.changedAt ASC")
     List<StatusHistory> findHistoryByOrder(@Param("order") RepairOrder order);
 }

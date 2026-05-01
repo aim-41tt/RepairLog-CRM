@@ -7,7 +7,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ru.papkov.repairlog.application.dto.notification.NotificationResponse;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.Client;
 import ru.papkov.repairlog.domain.model.Notification;
@@ -59,11 +58,11 @@ class NotificationServiceTest {
     void getByClient_returnsList() {
         when(notificationRepository.findByClientId(1L)).thenReturn(List.of(testNotification));
 
-        List<NotificationResponse> result = notificationService.getByClient(1L);
+        List<Notification> result = notificationService.getByClient(1L);
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getClientId()).isEqualTo(1L);
-        assertThat(result.get(0).getType()).isEqualTo("SMS");
+        assertThat(result.get(0).getClient().getId()).isEqualTo(1L);
+        assertThat(result.get(0).getNotificationType()).isEqualTo(Notification.NotificationType.SMS);
     }
 
     @Test
@@ -71,7 +70,7 @@ class NotificationServiceTest {
     void getByClient_returnsEmptyList() {
         when(notificationRepository.findByClientId(99L)).thenReturn(List.of());
 
-        List<NotificationResponse> result = notificationService.getByClient(99L);
+        List<Notification> result = notificationService.getByClient(99L);
 
         assertThat(result).isEmpty();
     }
@@ -81,11 +80,11 @@ class NotificationServiceTest {
     void getByOrder_returnsList() {
         when(notificationRepository.findByRepairOrderId(1L)).thenReturn(List.of(testNotification));
 
-        List<NotificationResponse> result = notificationService.getByOrder(1L);
+        List<Notification> result = notificationService.getByOrder(1L);
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getRepairOrderId()).isEqualTo(1L);
-        assertThat(result.get(0).getOrderNumber()).isEqualTo("RO-20260228-0001");
+        assertThat(result.get(0).getRepairOrder().getId()).isEqualTo(1L);
+        assertThat(result.get(0).getRepairOrder().getOrderNumber()).isEqualTo("RO-20260228-0001");
     }
 
     @Test
@@ -94,10 +93,10 @@ class NotificationServiceTest {
         when(notificationRepository.findByStatus(Notification.NotificationStatus.PENDING))
                 .thenReturn(List.of(testNotification));
 
-        List<NotificationResponse> result = notificationService.getPending();
+        List<Notification> result = notificationService.getPending();
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getStatus()).isEqualTo("PENDING");
+        assertThat(result.get(0).getStatus()).isEqualTo(Notification.NotificationStatus.PENDING);
     }
 
     @Test
@@ -136,10 +135,9 @@ class NotificationServiceTest {
 
         when(notificationRepository.findByClientId(1L)).thenReturn(List.of(notifWithoutOrder));
 
-        List<NotificationResponse> result = notificationService.getByClient(1L);
+        List<Notification> result = notificationService.getByClient(1L);
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getRepairOrderId()).isNull();
-        assertThat(result.get(0).getOrderNumber()).isNull();
+        assertThat(result.get(0).getRepairOrder()).isNull();
     }
 }

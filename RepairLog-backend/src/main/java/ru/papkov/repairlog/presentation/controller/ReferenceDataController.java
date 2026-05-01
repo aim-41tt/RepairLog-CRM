@@ -3,6 +3,7 @@ package ru.papkov.repairlog.presentation.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import ru.papkov.repairlog.domain.model.*;
 import ru.papkov.repairlog.domain.repository.*;
@@ -56,6 +57,21 @@ public class ReferenceDataController {
                 .collect(Collectors.toList()));
     }
 
+    @PostMapping("/device-types")
+    @Operation(summary = "Создать тип устройства")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
+    public ResponseEntity<Map<String, Object>> createDeviceType(@Valid @RequestBody CreateNameRequest request) {
+        String name = request.getName().trim();
+        DeviceType deviceType = deviceTypeRepository.findByName(name)
+                .orElseGet(() -> {
+                    DeviceType dt = new DeviceType();
+                    dt.setName(name);
+                    return deviceTypeRepository.save(dt);
+                });
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of("id", deviceType.getId(), "name", deviceType.getName()));
+    }
+
     @GetMapping("/brands")
     @Operation(summary = "Список брендов")
     public ResponseEntity<List<Map<String, Object>>> getBrands() {
@@ -66,10 +82,15 @@ public class ReferenceDataController {
 
     @PostMapping("/brands")
     @Operation(summary = "Создать бренд")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
     public ResponseEntity<Map<String, Object>> createBrand(@Valid @RequestBody CreateNameRequest request) {
-        Brand brand = new Brand();
-        brand.setName(request.getName().trim());
-        brand = brandRepository.save(brand);
+        String name = request.getName().trim();
+        Brand brand = brandRepository.findByName(name)
+                .orElseGet(() -> {
+                    Brand b = new Brand();
+                    b.setName(name);
+                    return brandRepository.save(b);
+                });
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(Map.of("id", brand.getId(), "name", brand.getName()));
     }
@@ -87,6 +108,7 @@ public class ReferenceDataController {
 
     @PostMapping("/brands/{brandId}/models")
     @Operation(summary = "Создать модель для бренда")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
     public ResponseEntity<Map<String, Object>> createModel(@PathVariable Long brandId,
                                                             @Valid @RequestBody CreateNameRequest request) {
         Brand brand = brandRepository.findById(brandId)

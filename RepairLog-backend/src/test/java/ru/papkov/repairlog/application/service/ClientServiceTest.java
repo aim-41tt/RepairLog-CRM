@@ -7,7 +7,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ru.papkov.repairlog.application.dto.client.ClientResponse;
 import ru.papkov.repairlog.application.dto.client.CreateClientRequest;
 import ru.papkov.repairlog.domain.exception.BusinessLogicException;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
@@ -76,7 +75,7 @@ class ClientServiceTest {
     void getAll_returnsAllClients() {
         when(clientRepository.findAll()).thenReturn(List.of(testClient));
 
-        List<ClientResponse> result = clientService.getAll();
+        List<Client> result = clientService.getAll();
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getName()).isEqualTo("Иван");
@@ -89,7 +88,7 @@ class ClientServiceTest {
     void getAll_returnsEmptyList() {
         when(clientRepository.findAll()).thenReturn(List.of());
 
-        List<ClientResponse> result = clientService.getAll();
+        List<Client> result = clientService.getAll();
 
         assertThat(result).isEmpty();
     }
@@ -99,7 +98,7 @@ class ClientServiceTest {
     void getById_returnsClient() {
         when(clientRepository.findById(1L)).thenReturn(Optional.of(testClient));
 
-        ClientResponse result = clientService.getById(1L);
+        Client result = clientService.getById(1L);
 
         assertThat(result.getId()).isEqualTo(1L);
         assertThat(result.getPhone()).isEqualTo("+79001234567");
@@ -120,7 +119,7 @@ class ClientServiceTest {
     void search_byPhone() {
         when(clientRepository.findByPhone("+79001234567")).thenReturn(Optional.of(testClient));
 
-        List<ClientResponse> result = clientService.search("+79001234567");
+        List<Client> result = clientService.search("+79001234567");
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getPhone()).isEqualTo("+79001234567");
@@ -131,7 +130,7 @@ class ClientServiceTest {
     void search_byPhone_notFound() {
         when(clientRepository.findByPhone("+79999999999")).thenReturn(Optional.empty());
 
-        List<ClientResponse> result = clientService.search("+79999999999");
+        List<Client> result = clientService.search("+79999999999");
 
         assertThat(result).isEmpty();
     }
@@ -141,7 +140,7 @@ class ClientServiceTest {
     void search_byFullName() {
         when(clientRepository.searchByFullName("Петров")).thenReturn(List.of(testClient));
 
-        List<ClientResponse> result = clientService.search("Петров");
+        List<Client> result = clientService.search("Петров");
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getSurname()).isEqualTo("Петров");
@@ -157,10 +156,10 @@ class ClientServiceTest {
             return c;
         });
 
-        ClientResponse result = clientService.create(createRequest);
+        Client result = clientService.create(createRequest);
 
         assertThat(result.getName()).isEqualTo("Иван");
-        assertThat(result.isConsentGiven()).isFalse();
+        assertThat(result.getConsentGiven()).isFalse();
         verify(clientRepository).save(any(Client.class));
     }
 
@@ -175,9 +174,9 @@ class ClientServiceTest {
             return c;
         });
 
-        ClientResponse result = clientService.create(createRequest);
+        Client result = clientService.create(createRequest);
 
-        assertThat(result.isConsentGiven()).isTrue();
+        assertThat(result.getConsentGiven()).isTrue();
         assertThat(result.getDataRetentionUntil()).isNotNull();
     }
 
@@ -205,7 +204,7 @@ class ClientServiceTest {
         when(clientRepository.findById(1L)).thenReturn(Optional.of(testClient));
         when(clientRepository.save(any(Client.class))).thenReturn(testClient);
 
-        ClientResponse result = clientService.update(1L, updateReq);
+        Client result = clientService.update(1L, updateReq);
 
         assertThat(result).isNotNull();
         verify(clientRepository).save(any(Client.class));
@@ -286,7 +285,6 @@ class ClientServiceTest {
 
         clientService.anonymizeClient(testClient);
 
-        // Проверка анонимизации клиента
         assertThat(testClient.getName()).isEqualTo("Удалён");
         assertThat(testClient.getSurname()).isEqualTo("Удалён");
         assertThat(testClient.getPatronymic()).isNull();
@@ -297,7 +295,6 @@ class ClientServiceTest {
         assertThat(testClient.getConsentDate()).isNull();
         assertThat(testClient.getDataRetentionUntil()).isNull();
 
-        // Проверка анонимизации связанных сущностей
         assertThat(device.getSerialNumber()).isEqualTo("ANON-1");
         assertThat(order.getClientComplaint()).isEqualTo("[Данные удалены по 152-ФЗ]");
         assertThat(notification.getMessage()).isEqualTo("[Данные удалены по 152-ФЗ]");

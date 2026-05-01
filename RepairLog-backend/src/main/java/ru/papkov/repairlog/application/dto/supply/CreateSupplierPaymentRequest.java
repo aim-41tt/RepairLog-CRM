@@ -11,7 +11,6 @@ import java.math.BigDecimal;
  */
 public class CreateSupplierPaymentRequest {
 
-    @NotNull(message = "ID заявки обязателен")
     private Long supplyRequestId;
 
     @NotNull(message = "Сумма оплаты обязательна")

@@ -49,7 +49,7 @@ class SupplierServiceTest {
     void getAll_returnsList() {
         when(supplierRepository.findAll()).thenReturn(List.of(testSupplier));
 
-        List<SupplierResponse> result = supplierService.getAll();
+        List<Supplier> result = supplierService.getAll();
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getName()).isEqualTo("ООО Запчасти");
@@ -60,7 +60,7 @@ class SupplierServiceTest {
     void getById_returnsSupplier() {
         when(supplierRepository.findById(1L)).thenReturn(Optional.of(testSupplier));
 
-        SupplierResponse result = supplierService.getById(1L);
+        Supplier result = supplierService.getById(1L);
 
         assertThat(result.getId()).isEqualTo(1L);
         assertThat(result.getName()).isEqualTo("ООО Запчасти");
@@ -81,7 +81,7 @@ class SupplierServiceTest {
     void getActive_returnsActiveOnly() {
         when(supplierRepository.findByActiveTrue()).thenReturn(List.of(testSupplier));
 
-        List<SupplierResponse> result = supplierService.getActive();
+        List<Supplier> result = supplierService.getActive();
 
         assertThat(result).hasSize(1);
     }
@@ -100,7 +100,7 @@ class SupplierServiceTest {
             return s;
         });
 
-        SupplierResponse result = supplierService.create(request);
+        Supplier result = supplierService.create(request);
 
         assertThat(result.getName()).isEqualTo("Новый поставщик");
         verify(supplierRepository).save(any(Supplier.class));
@@ -116,7 +116,7 @@ class SupplierServiceTest {
         when(supplierRepository.findById(1L)).thenReturn(Optional.of(testSupplier));
         when(supplierRepository.save(any(Supplier.class))).thenReturn(testSupplier);
 
-        SupplierResponse result = supplierService.update(1L, request);
+        Supplier result = supplierService.update(1L, request);
 
         assertThat(testSupplier.getName()).isEqualTo("Обновлённое имя");
         verify(supplierRepository).save(testSupplier);
@@ -150,7 +150,7 @@ class SupplierServiceTest {
         when(supplierRepository.findByIntegrationType(IntegrationType.MANUAL))
                 .thenReturn(List.of(testSupplier));
 
-        List<SupplierResponse> result = supplierService.getByIntegrationType("MANUAL");
+        List<Supplier> result = supplierService.getByIntegrationType("MANUAL");
 
         assertThat(result).hasSize(1);
     }

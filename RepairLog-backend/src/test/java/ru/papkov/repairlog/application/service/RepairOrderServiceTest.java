@@ -1,5 +1,6 @@
 package ru.papkov.repairlog.application.service;
 
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -9,13 +10,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.papkov.repairlog.application.dto.order.ChangeStatusRequest;
 import ru.papkov.repairlog.application.dto.order.CreateRepairOrderRequest;
-import ru.papkov.repairlog.application.dto.order.RepairOrderResponse;
 import ru.papkov.repairlog.domain.exception.BusinessLogicException;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.*;
 import ru.papkov.repairlog.domain.repository.*;
 
-import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +35,7 @@ class RepairOrderServiceTest {
     @Mock private RepairPriorityRepository repairPriorityRepository;
     @Mock private StatusHistoryRepository statusHistoryRepository;
     @Mock private ReceiptRepository receiptRepository;
+    @Mock private EntityManager entityManager;
 
     @InjectMocks
     private RepairOrderService repairOrderService;
@@ -104,9 +104,8 @@ class RepairOrderServiceTest {
     @DisplayName("getAllActive - возвращает активные заказы")
     void getAllActive_returnsList() {
         when(repairOrderRepository.findAllActiveOrders()).thenReturn(List.of(testOrder));
-        when(receiptRepository.findByRepairOrder(any())).thenReturn(Optional.empty());
 
-        List<RepairOrderResponse> result = repairOrderService.getAllActive();
+        List<RepairOrder> result = repairOrderService.getAllActive();
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getOrderNumber()).isEqualTo("RO-20260228-0001");
@@ -116,12 +115,11 @@ class RepairOrderServiceTest {
     @DisplayName("getUnassigned - возвращает заказы без мастера")
     void getUnassigned_returnsList() {
         when(repairOrderRepository.findUnassignedOrders()).thenReturn(List.of(testOrder));
-        when(receiptRepository.findByRepairOrder(any())).thenReturn(Optional.empty());
 
-        List<RepairOrderResponse> result = repairOrderService.getUnassigned();
+        List<RepairOrder> result = repairOrderService.getUnassigned();
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getAssignedMasterName()).isNull();
+        assertThat(result.get(0).getAssignedMaster()).isNull();
     }
 
     @Test
@@ -130,9 +128,8 @@ class RepairOrderServiceTest {
         testOrder.setAssignedMaster(testTechnician);
         when(employeeRepository.findById(2L)).thenReturn(Optional.of(testTechnician));
         when(repairOrderRepository.findActiveOrdersByMaster(testTechnician)).thenReturn(List.of(testOrder));
-        when(receiptRepository.findByRepairOrder(any())).thenReturn(Optional.empty());
 
-        List<RepairOrderResponse> result = repairOrderService.getByMaster(2L);
+        List<RepairOrder> result = repairOrderService.getByMaster(2L);
 
         assertThat(result).hasSize(1);
     }
@@ -150,12 +147,11 @@ class RepairOrderServiceTest {
     @DisplayName("getById - возвращает заказ по ID")
     void getById_returnsOrder() {
         when(repairOrderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
-        when(receiptRepository.findByRepairOrder(testOrder)).thenReturn(Optional.empty());
 
-        RepairOrderResponse result = repairOrderService.getById(1L);
+        RepairOrder result = repairOrderService.getById(1L);
 
         assertThat(result.getId()).isEqualTo(1L);
-        assertThat(result.getCurrentStatusName()).isEqualTo("Новая");
+        assertThat(result.getCurrentStatus().getName()).isEqualTo("Новая");
     }
 
     @Test
@@ -171,9 +167,8 @@ class RepairOrderServiceTest {
     @DisplayName("getByOrderNumber - возвращает заказ по номеру")
     void getByOrderNumber_returnsOrder() {
         when(repairOrderRepository.findByOrderNumber("RO-20260228-0001")).thenReturn(Optional.of(testOrder));
-        when(receiptRepository.findByRepairOrder(testOrder)).thenReturn(Optional.empty());
 
-        RepairOrderResponse result = repairOrderService.getByOrderNumber("RO-20260228-0001");
+        RepairOrder result = repairOrderService.getByOrderNumber("RO-20260228-0001");
 
         assertThat(result.getOrderNumber()).isEqualTo("RO-20260228-0001");
     }
@@ -183,9 +178,8 @@ class RepairOrderServiceTest {
     void getByClient_returnsList() {
         when(clientRepository.findById(1L)).thenReturn(Optional.of(testClient));
         when(repairOrderRepository.findByClient(testClient)).thenReturn(List.of(testOrder));
-        when(receiptRepository.findByRepairOrder(any())).thenReturn(Optional.empty());
 
-        List<RepairOrderResponse> result = repairOrderService.getByClient(1L);
+        List<RepairOrder> result = repairOrderService.getByClient(1L);
 
         assertThat(result).hasSize(1);
     }
@@ -203,15 +197,15 @@ class RepairOrderServiceTest {
         when(deviceRepository.findById(1L)).thenReturn(Optional.of(testDevice));
         when(employeeRepository.findByLogin("receptionist1")).thenReturn(Optional.of(testReceptionist));
         when(repairStatusRepository.findByCode("NEW")).thenReturn(Optional.of(statusNew));
-        when(repairOrderRepository.save(any(RepairOrder.class))).thenAnswer(inv -> {
+        when(repairOrderRepository.saveAndFlush(any(RepairOrder.class))).thenAnswer(inv -> {
             RepairOrder o = inv.getArgument(0);
             o.setId(1L);
             o.setOrderNumber("RO-20260228-0001");
             return o;
         });
-        when(receiptRepository.findByRepairOrder(any())).thenReturn(Optional.empty());
+        doNothing().when(entityManager).refresh(any());
 
-        RepairOrderResponse result = repairOrderService.create(request, "receptionist1");
+        RepairOrder result = repairOrderService.create(request, "receptionist1");
 
         assertThat(result.getClientComplaint()).isEqualTo("Не включается");
         verify(statusHistoryRepository).save(any(StatusHistory.class));
@@ -246,17 +240,17 @@ class RepairOrderServiceTest {
         when(employeeRepository.findByLogin("receptionist1")).thenReturn(Optional.of(testReceptionist));
         when(repairStatusRepository.findByCode("NEW")).thenReturn(Optional.of(statusNew));
         when(repairPriorityRepository.findById(1L)).thenReturn(Optional.of(priority));
-        when(repairOrderRepository.save(any(RepairOrder.class))).thenAnswer(inv -> {
+        when(repairOrderRepository.saveAndFlush(any(RepairOrder.class))).thenAnswer(inv -> {
             RepairOrder o = inv.getArgument(0);
             o.setId(1L);
             o.setOrderNumber("RO-20260228-0002");
             return o;
         });
-        when(receiptRepository.findByRepairOrder(any())).thenReturn(Optional.empty());
+        doNothing().when(entityManager).refresh(any());
 
-        RepairOrderResponse result = repairOrderService.create(request, "receptionist1");
+        RepairOrder result = repairOrderService.create(request, "receptionist1");
 
-        assertThat(result.getPriorityName()).isEqualTo("Срочный");
+        assertThat(result.getPriority().getName()).isEqualTo("Срочный");
     }
 
     @Test
@@ -266,9 +260,8 @@ class RepairOrderServiceTest {
         when(employeeRepository.findById(2L)).thenReturn(Optional.of(testTechnician));
         when(repairStatusRepository.findByCode("ACCEPTED")).thenReturn(Optional.of(statusAccepted));
         when(repairOrderRepository.save(any(RepairOrder.class))).thenReturn(testOrder);
-        when(receiptRepository.findByRepairOrder(any())).thenReturn(Optional.empty());
 
-        RepairOrderResponse result = repairOrderService.assignMaster(1L, 2L);
+        RepairOrder result = repairOrderService.assignMaster(1L, 2L);
 
         assertThat(testOrder.getAssignedMaster()).isEqualTo(testTechnician);
         verify(statusHistoryRepository).save(any(StatusHistory.class));
@@ -308,9 +301,8 @@ class RepairOrderServiceTest {
         when(repairStatusRepository.findById(3L)).thenReturn(Optional.of(inRepairStatus));
         when(employeeRepository.findByLogin("tech1")).thenReturn(Optional.of(testTechnician));
         when(repairOrderRepository.save(any(RepairOrder.class))).thenReturn(testOrder);
-        when(receiptRepository.findByRepairOrder(any())).thenReturn(Optional.empty());
 
-        RepairOrderResponse result = repairOrderService.changeStatus(1L, request, "tech1");
+        RepairOrder result = repairOrderService.changeStatus(1L, request, "tech1");
 
         assertThat(testOrder.getCurrentStatus()).isEqualTo(inRepairStatus);
         verify(statusHistoryRepository).save(any(StatusHistory.class));
@@ -332,7 +324,6 @@ class RepairOrderServiceTest {
         when(repairStatusRepository.findById(5L)).thenReturn(Optional.of(issuedStatus));
         when(employeeRepository.findByLogin("receptionist1")).thenReturn(Optional.of(testReceptionist));
         when(repairOrderRepository.save(any(RepairOrder.class))).thenReturn(testOrder);
-        when(receiptRepository.findByRepairOrder(any())).thenReturn(Optional.empty());
 
         repairOrderService.changeStatus(1L, request, "receptionist1");
 
@@ -355,7 +346,6 @@ class RepairOrderServiceTest {
         when(repairStatusRepository.findById(6L)).thenReturn(Optional.of(doneStatus));
         when(employeeRepository.findByLogin("tech1")).thenReturn(Optional.of(testTechnician));
         when(repairOrderRepository.save(any(RepairOrder.class))).thenReturn(testOrder);
-        when(receiptRepository.findByRepairOrder(any())).thenReturn(Optional.empty());
 
         repairOrderService.changeStatus(1L, request, "tech1");
 

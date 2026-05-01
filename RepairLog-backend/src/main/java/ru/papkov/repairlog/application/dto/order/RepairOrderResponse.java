@@ -22,6 +22,8 @@ public class RepairOrderResponse {
 	private Long assignedMasterId;
 	private String currentStatusName;
 	private Long currentStatusId;
+	/** B-03: machine-readable status code for frontend business-logic decisions */
+	private String currentStatusCode;
 	private String priorityName;
 	private String clientComplaint;
 	private String externalCondition;
@@ -129,6 +131,14 @@ public class RepairOrderResponse {
 
 	public void setCurrentStatusId(Long currentStatusId) {
 		this.currentStatusId = currentStatusId;
+	}
+
+	public String getCurrentStatusCode() {
+		return currentStatusCode;
+	}
+
+	public void setCurrentStatusCode(String currentStatusCode) {
+		this.currentStatusCode = currentStatusCode;
 	}
 
 	public String getPriorityName() {

@@ -1,5 +1,6 @@
 package ru.papkov.repairlog.application.dto.inventory;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -30,9 +31,14 @@ public class CreateInventoryItemRequest {
     @Min(value = 0, message = "Минимальный остаток не может быть отрицательным")
     private Integer minQuantity;
 
+    // purchasePrice can be 0 (own production / donated), but must not be negative
+    @DecimalMin(value = "0.00", message = "Закупочная цена не может быть отрицательной")
     private BigDecimal purchasePrice;
+
+    // B-14: selling price must be > 0 — a zero price leads to silent billing errors
+    @NotNull(message = "Цена продажи обязательна")
+    @DecimalMin(value = "0.01", message = "Цена продажи должна быть больше 0")
     private BigDecimal sellingPrice;
-    private String location;
 
     public CreateInventoryItemRequest() {}
 
@@ -50,6 +56,4 @@ public class CreateInventoryItemRequest {
     public void setPurchasePrice(BigDecimal purchasePrice) { this.purchasePrice = purchasePrice; }
     public BigDecimal getSellingPrice() { return sellingPrice; }
     public void setSellingPrice(BigDecimal sellingPrice) { this.sellingPrice = sellingPrice; }
-    public String getLocation() { return location; }
-    public void setLocation(String location) { this.location = location; }
 }

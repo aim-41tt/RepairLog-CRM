@@ -2,7 +2,6 @@ package ru.papkov.repairlog.application.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.papkov.repairlog.application.dto.supply.SupplySettingResponse;
 import ru.papkov.repairlog.application.dto.supply.UpdateSupplySettingRequest;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.Employee;
@@ -12,10 +11,15 @@ import ru.papkov.repairlog.domain.repository.SupplySettingRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Сервис управления настройками поставок.
+ * <p>
+ * Возвращает entity — DTO-конверсия выполняется в контроллерах через маппер.
+ * Методы {@link #getValue(String)}, {@link #getIntValue(String, int)},
+ * {@link #getBooleanValue(String, boolean)} оставлены как есть, потому что они
+ * возвращают примитивные значения настроек (используются планировщиками).
+ * </p>
  */
 @Service
 @Transactional(readOnly = true)
@@ -30,14 +34,12 @@ public class SupplySettingService {
         this.employeeRepository = employeeRepository;
     }
 
-    public List<SupplySettingResponse> getAll() {
-        return settingRepository.findAll().stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public List<SupplySetting> getAll() {
+        return settingRepository.findAll();
     }
 
-    public SupplySettingResponse getByKey(String key) {
-        return toResponse(findByKey(key));
+    public SupplySetting getByKey(String key) {
+        return findByKey(key);
     }
 
     public String getValue(String key) {
@@ -63,7 +65,7 @@ public class SupplySettingService {
     }
 
     @Transactional
-    public SupplySettingResponse update(String key, UpdateSupplySettingRequest request, String updatedByLogin) {
+    public SupplySetting update(String key, UpdateSupplySettingRequest request, String updatedByLogin) {
         SupplySetting setting = findByKey(key);
 
         Employee employee = employeeRepository.findByLogin(updatedByLogin)
@@ -73,24 +75,11 @@ public class SupplySettingService {
         setting.setLastModifiedAt(LocalDateTime.now());
         setting.setModifiedBy(employee);
 
-        return toResponse(settingRepository.save(setting));
+        return settingRepository.save(setting);
     }
 
     private SupplySetting findByKey(String key) {
         return settingRepository.findBySettingKey(key)
                 .orElseThrow(() -> new EntityNotFoundException("Настройка не найдена: " + key));
-    }
-
-    private SupplySettingResponse toResponse(SupplySetting s) {
-        SupplySettingResponse r = new SupplySettingResponse();
-        r.setId(s.getId());
-        r.setSettingKey(s.getSettingKey());
-        r.setSettingValue(s.getSettingValue());
-        r.setDescription(s.getDescription());
-        r.setLastModifiedAt(s.getLastModifiedAt());
-        if (s.getModifiedBy() != null) {
-            r.setModifiedByName(s.getModifiedBy().getFullName());
-        }
-        return r;
     }
 }

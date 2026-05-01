@@ -2,7 +2,8 @@ package ru.papkov.repairlog.application.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.papkov.repairlog.application.dto.client.*;
+import ru.papkov.repairlog.application.dto.client.CreateClientRequest;
+import ru.papkov.repairlog.application.mapper.ClientMapper;
 import ru.papkov.repairlog.domain.exception.BusinessLogicException;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.Client;
@@ -15,12 +16,15 @@ import ru.papkov.repairlog.domain.repository.NotificationRepository;
 import ru.papkov.repairlog.domain.repository.RepairOrderRepository;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Сервис управления клиентами.
  * Включает управление согласием на обработку ПДн (152-ФЗ).
+ * <p>
+ * Возвращает entity — DTO-конверсия выполняется в контроллерах через {@link ClientMapper}.
+ * </p>
  *
  * @author aim-41tt
  */
@@ -31,77 +35,89 @@ public class ClientService {
     private final DeviceRepository deviceRepository;
     private final RepairOrderRepository repairOrderRepository;
     private final NotificationRepository notificationRepository;
+    private final ClientMapper clientMapper;
 
     public ClientService(ClientRepository clientRepository,
                          DeviceRepository deviceRepository,
                          RepairOrderRepository repairOrderRepository,
-                         NotificationRepository notificationRepository) {
+                         NotificationRepository notificationRepository,
+                         ClientMapper clientMapper) {
         this.clientRepository = clientRepository;
         this.deviceRepository = deviceRepository;
         this.repairOrderRepository = repairOrderRepository;
         this.notificationRepository = notificationRepository;
+        this.clientMapper = clientMapper;
     }
 
     @Transactional(readOnly = true)
-    public List<ClientResponse> getAll() {
-        return clientRepository.findAll().stream()
-                .map(this::toResponse).collect(Collectors.toList());
+    public List<Client> getAll() {
+        return clientRepository.findAll();
     }
 
     @Transactional(readOnly = true)
-    public ClientResponse getById(Long id) {
-        return toResponse(findById(id));
+    public Client getById(Long id) {
+        return findById(id);
     }
 
     @Transactional(readOnly = true)
-    public List<ClientResponse> search(String query) {
+    public List<Client> search(String query) {
         // поиск по ФИО или телефону
         if (query.matches("^[0-9+() -]+$")) {
             return clientRepository.findByPhone(query)
-                    .map(c -> List.of(toResponse(c)))
+                    .map(List::of)
                     .orElse(List.of());
         }
-        return clientRepository.searchByFullName(query).stream()
-                .map(this::toResponse).collect(Collectors.toList());
+        return clientRepository.searchByFullName(query);
+    }
+
+    /**
+     * Расширенный поиск клиентов для администратора.
+     * Поддерживает поиск по дате рождения в форматах YYYY-MM-DD и DD.MM.YYYY,
+     * а также делегирует базовому поиску по ФИО/телефону.
+     * Используется при ручной анонимизации ПДн (152-ФЗ).
+     *
+     * @param query поисковый запрос
+     * @return список найденных клиентов
+     */
+    @Transactional(readOnly = true)
+    public List<Client> searchForAdmin(String query) {
+        if (query.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            return clientRepository.findByDateBirth(LocalDate.parse(query));
+        }
+        if (query.matches("\\d{2}\\.\\d{2}\\.\\d{4}")) {
+            return clientRepository.findByDateBirth(
+                    LocalDate.parse(query, DateTimeFormatter.ofPattern("dd.MM.yyyy")));
+        }
+        return search(query);
     }
 
     @Transactional
-    public ClientResponse create(CreateClientRequest request) {
+    public Client create(CreateClientRequest request) {
         clientRepository.findByPhone(request.getPhone()).ifPresent(c -> {
             throw new BusinessLogicException("Клиент с таким телефоном уже существует");
         });
 
-        Client client = new Client();
-        client.setName(request.getName());
-        client.setSurname(request.getSurname());
-        client.setPatronymic(request.getPatronymic());
-        client.setDateBirth(request.getDateBirth());
-        client.setPhone(request.getPhone());
-        client.setEmail(request.getEmail());
-
-        if (request.isConsentGiven()) {
-            client.giveConsent();
-            // ПДн хранятся 3 года с момента согласия
-            client.setDataRetentionUntil(LocalDate.now().plusYears(3));
+        // B-15: 152-ФЗ — явное согласие обязательно для регистрации клиента
+        if (!request.isConsentGiven()) {
+            throw new BusinessLogicException(
+                    "Невозможно создать клиента без согласия на обработку персональных данных (152-ФЗ)");
         }
 
+        Client client = clientMapper.toEntity(request);
+        client.giveConsent();
+        // ПДн хранятся 3 года с момента согласия
+        client.setDataRetentionUntil(LocalDate.now().plusYears(3));
         client.setNotificationsEnabled(request.isNotificationsEnabled());
 
-        Client saved = clientRepository.save(client);
-        return toResponse(saved);
+        return clientRepository.save(client);
     }
 
     @Transactional
-    public ClientResponse update(Long id, CreateClientRequest request) {
+    public Client update(Long id, CreateClientRequest request) {
         Client client = findById(id);
-        client.setName(request.getName());
-        client.setSurname(request.getSurname());
-        client.setPatronymic(request.getPatronymic());
-        client.setDateBirth(request.getDateBirth());
-        client.setPhone(request.getPhone());
-        client.setEmail(request.getEmail());
+        clientMapper.updateEntity(request, client);
         client.setNotificationsEnabled(request.isNotificationsEnabled());
-        return toResponse(clientRepository.save(client));
+        return clientRepository.save(client);
     }
 
     /**
@@ -139,8 +155,10 @@ public class ClientService {
     public void anonymizeClient(Client client) {
         // 1. Анонимизация ПДн клиента
         client.anonymize();
-        // Phone: UNIQUE + CHECK ^[0-9+() -]{6,20}$ → "0000000" + id гарантирует уникальность и валидность
-        client.setPhone("0000000" + client.getId());
+        // Phone: UNIQUE + CHECK ^[0-9+() -]{6,20}$.
+        // Префикс "00000000000" (11 нулей) исключает коллизию с любым реальным номером
+        // (российские номера начинаются с 7/8). id обеспечивает уникальность среди анонимизированных.
+        client.setPhone("00000000000" + client.getId());
         clientRepository.save(client);
 
         // 2. Анонимизация серийных номеров клиентских устройств
@@ -181,23 +199,5 @@ public class ClientService {
     private Client findById(Long id) {
         return clientRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Клиент не найден: " + id));
-    }
-
-    private ClientResponse toResponse(Client c) {
-        ClientResponse r = new ClientResponse();
-        r.setId(c.getId());
-        r.setName(c.getName());
-        r.setSurname(c.getSurname());
-        r.setPatronymic(c.getPatronymic());
-        r.setFullName(c.getFullName());
-        r.setDateBirth(c.getDateBirth());
-        r.setPhone(c.getPhone());
-        r.setEmail(c.getEmail());
-        r.setConsentGiven(c.getConsentGiven());
-        r.setConsentDate(c.getConsentDate());
-        r.setDataRetentionUntil(c.getDataRetentionUntil());
-        r.setNotificationsEnabled(c.getNotificationsEnabled() != null && c.getNotificationsEnabled());
-        r.setCreatedAt(c.getCreatedAt());
-        return r;
     }
 }

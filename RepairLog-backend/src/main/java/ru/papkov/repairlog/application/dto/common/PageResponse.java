@@ -1,6 +1,9 @@
 package ru.papkov.repairlog.application.dto.common;
 
+import org.springframework.data.domain.Page;
+
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Обобщённый DTO для постраничных ответов.
@@ -27,6 +30,26 @@ public class PageResponse<T> {
 		this.totalElements = totalElements;
 		this.totalPages = totalPages;
 		this.last = last;
+	}
+
+	/**
+	 * Построить PageResponse из Spring Data Page, преобразуя элементы через указанную функцию-маппер.
+	 *
+	 * @param page   страница сущностей
+	 * @param mapper функция преобразования E -> D
+	 * @param <E>    тип сущности
+	 * @param <D>    тип DTO
+	 * @return DTO-страница
+	 */
+	public static <E, D> PageResponse<D> of(Page<E> page, Function<E, D> mapper) {
+		return new PageResponse<>(
+				page.getContent().stream().map(mapper).toList(),
+				page.getNumber(),
+				page.getSize(),
+				page.getTotalElements(),
+				page.getTotalPages(),
+				page.isLast()
+		);
 	}
 
 	public List<T> getContent() {

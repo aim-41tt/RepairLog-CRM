@@ -8,7 +8,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.papkov.repairlog.application.dto.diagnostic.CreateDiagnosticRequest;
-import ru.papkov.repairlog.application.dto.diagnostic.DiagnosticResponse;
 import ru.papkov.repairlog.domain.exception.BusinessLogicException;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.*;
@@ -68,12 +67,12 @@ class DiagnosticServiceTest {
     void getByOrderId_returnsDiagnostic() {
         when(diagnosticRepository.findByRepairOrderId(1L)).thenReturn(Optional.of(testDiagnostic));
 
-        DiagnosticResponse result = diagnosticService.getByOrderId(1L);
+        Diagnostic result = diagnosticService.getByOrderId(1L);
 
         assertThat(result.getId()).isEqualTo(1L);
         assertThat(result.getDescription()).isEqualTo("Неисправен экран");
         assertThat(result.getSolution()).isEqualTo("Замена экрана");
-        assertThat(result.getRepairOrderId()).isEqualTo(1L);
+        assertThat(result.getRepairOrder().getId()).isEqualTo(1L);
     }
 
     @Test
@@ -109,7 +108,7 @@ class DiagnosticServiceTest {
         when(repairStatusRepository.findByName("Диагностика")).thenReturn(Optional.of(diagStatus));
         when(repairOrderRepository.save(any(RepairOrder.class))).thenReturn(testOrder);
 
-        DiagnosticResponse result = diagnosticService.create(request, "tech1");
+        Diagnostic result = diagnosticService.create(request, "tech1");
 
         assertThat(result.getDescription()).isEqualTo("Неисправен экран");
         verify(diagnosticRepository).save(any(Diagnostic.class));

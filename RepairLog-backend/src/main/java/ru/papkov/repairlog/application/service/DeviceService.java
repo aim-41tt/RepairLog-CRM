@@ -10,10 +10,12 @@ import ru.papkov.repairlog.domain.model.*;
 import ru.papkov.repairlog.domain.repository.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Сервис управления устройствами.
+ * <p>
+ * Возвращает entity — DTO-конверсия выполняется в контроллерах через маппер.
+ * </p>
  *
  * @author aim-41tt
  */
@@ -45,19 +47,19 @@ public class DeviceService {
     }
 
 	@Transactional(readOnly = true)
-	public DeviceResponse getById(Long id) {
-		return toResponse(findDevice(id));
+	public Device getById(Long id) {
+		return findDevice(id);
 	}
 
 	@Transactional(readOnly = true)
-	public List<DeviceResponse> getByClient(Long clientId) {
+	public List<Device> getByClient(Long clientId) {
 		Client client = clientRepository.findById(clientId)
 				.orElseThrow(() -> new EntityNotFoundException("Клиент не найден: " + clientId));
-		return deviceRepository.findByClient(client).stream().map(this::toResponse).collect(Collectors.toList());
+		return deviceRepository.findByClient(client);
 	}
 
 	@Transactional
-	public DeviceResponse create(CreateDeviceRequest request) {
+	public Device create(CreateDeviceRequest request) {
 
 		DeviceType deviceType = resolveDeviceType(request.getDeviceType());
 		Brand brand = resolveBrand(request.getBrand());
@@ -75,7 +77,7 @@ public class DeviceService {
 			device.setClient(client);
 		}
 
-		return toResponse(deviceRepository.save(device));
+		return deviceRepository.save(device);
 	}
 
 	private DeviceType resolveDeviceType(RefField ref) {
@@ -133,24 +135,7 @@ public class DeviceService {
 	}
 
 	private Device findDevice(Long id) {
-		return deviceRepository.findById(id)
+		return deviceRepository.findByIdWithDetails(id)
 				.orElseThrow(() -> new EntityNotFoundException("Устройство не найдено: " + id));
-	}
-
-	private DeviceResponse toResponse(Device d) {
-		DeviceResponse r = new DeviceResponse();
-		r.setId(d.getId());
-		r.setDeviceTypeName(d.getDeviceType().getName());
-		r.setBrandName(d.getModel().getBrand().getName());
-		r.setModelName(d.getModel().getName());
-		r.setSerialNumber(d.getSerialNumber());
-		r.setClientOwned(d.getIsClientOwned());
-		r.setDescription(d.getDescription());
-		r.setCreatedAt(d.getCreatedAt());
-		if (d.getClient() != null) {
-			r.setClientId(d.getClient().getId());
-			r.setClientFullName(d.getClient().getFullName());
-		}
-		return r;
 	}
 }

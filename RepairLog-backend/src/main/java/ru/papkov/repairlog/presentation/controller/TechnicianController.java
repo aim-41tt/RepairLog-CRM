@@ -17,6 +17,11 @@ import ru.papkov.repairlog.application.dto.order.*;
 import ru.papkov.repairlog.application.dto.receipt.*;
 import ru.papkov.repairlog.application.dto.supply.CreateSupplyRequestRequest;
 import ru.papkov.repairlog.application.dto.supply.SupplyRequestResponse;
+import ru.papkov.repairlog.application.mapper.DiagnosticMapper;
+import ru.papkov.repairlog.application.mapper.InventoryItemMapper;
+import ru.papkov.repairlog.application.mapper.ReceiptMapper;
+import ru.papkov.repairlog.application.mapper.RepairOrderMapper;
+import ru.papkov.repairlog.application.mapper.SupplyRequestMapper;
 import ru.papkov.repairlog.application.service.*;
 
 import java.util.List;
@@ -42,6 +47,11 @@ public class TechnicianController {
     private final SupplyRequestService supplyRequestService;
     private final DocumentService documentService;
     private final ru.papkov.repairlog.domain.repository.EmployeeRepository employeeRepository;
+    private final RepairOrderMapper repairOrderMapper;
+    private final DiagnosticMapper diagnosticMapper;
+    private final ReceiptMapper receiptMapper;
+    private final InventoryItemMapper inventoryItemMapper;
+    private final SupplyRequestMapper supplyRequestMapper;
 
     public TechnicianController(RepairOrderService repairOrderService,
                                 DiagnosticService diagnosticService,
@@ -50,7 +60,12 @@ public class TechnicianController {
                                 DeviceService deviceService,
                                 SupplyRequestService supplyRequestService,
                                 DocumentService documentService,
-                                ru.papkov.repairlog.domain.repository.EmployeeRepository employeeRepository) {
+                                ru.papkov.repairlog.domain.repository.EmployeeRepository employeeRepository,
+                                RepairOrderMapper repairOrderMapper,
+                                DiagnosticMapper diagnosticMapper,
+                                ReceiptMapper receiptMapper,
+                                InventoryItemMapper inventoryItemMapper,
+                                SupplyRequestMapper supplyRequestMapper) {
         this.repairOrderService = repairOrderService;
         this.diagnosticService = diagnosticService;
         this.receiptService = receiptService;
@@ -59,6 +74,11 @@ public class TechnicianController {
         this.supplyRequestService = supplyRequestService;
         this.documentService = documentService;
         this.employeeRepository = employeeRepository;
+        this.repairOrderMapper = repairOrderMapper;
+        this.diagnosticMapper = diagnosticMapper;
+        this.receiptMapper = receiptMapper;
+        this.inventoryItemMapper = inventoryItemMapper;
+        this.supplyRequestMapper = supplyRequestMapper;
     }
 
     // ========== Заказы ==========
@@ -66,7 +86,7 @@ public class TechnicianController {
     @GetMapping("/orders/unassigned")
     @Operation(summary = "Список заявок без мастера")
     public ResponseEntity<List<RepairOrderResponse>> getUnassignedOrders() {
-        return ResponseEntity.ok(repairOrderService.getUnassigned());
+        return ResponseEntity.ok(repairOrderMapper.toResponseList(repairOrderService.getUnassigned()));
     }
 
     @GetMapping("/orders/my")
@@ -75,13 +95,13 @@ public class TechnicianController {
         var employee = employeeRepository.findByLogin(user.getUsername())
                 .orElseThrow(() -> new ru.papkov.repairlog.domain.exception.EntityNotFoundException(
                         "Сотрудник с логином " + user.getUsername() + " не найден"));
-        return ResponseEntity.ok(repairOrderService.getByMaster(employee.getId()));
+        return ResponseEntity.ok(repairOrderMapper.toResponseList(repairOrderService.getByMaster(employee.getId())));
     }
 
     @GetMapping("/orders/{id}")
     @Operation(summary = "Детали заказа")
     public ResponseEntity<RepairOrderResponse> getOrder(@PathVariable Long id) {
-        return ResponseEntity.ok(repairOrderService.getById(id));
+        return ResponseEntity.ok(repairOrderMapper.toResponse(repairOrderService.getById(id)));
     }
 
     @PostMapping("/orders/{id}/take")
@@ -90,7 +110,7 @@ public class TechnicianController {
         var employee = employeeRepository.findByLogin(user.getUsername())
                 .orElseThrow(() -> new ru.papkov.repairlog.domain.exception.EntityNotFoundException(
                         "Сотрудник с логином " + user.getUsername() + " не найден"));
-        return ResponseEntity.ok(repairOrderService.assignMaster(id, employee.getId()));
+        return ResponseEntity.ok(repairOrderMapper.toResponse(repairOrderService.assignMaster(id, employee.getId())));
     }
 
     @PostMapping("/orders/{id}/status")
@@ -98,13 +118,14 @@ public class TechnicianController {
     public ResponseEntity<RepairOrderResponse> changeStatus(@PathVariable Long id,
                                                              @Valid @RequestBody ChangeStatusRequest request,
                                                              @AuthenticationPrincipal UserDetails user) {
-        return ResponseEntity.ok(repairOrderService.changeStatus(id, request, user.getUsername()));
+        return ResponseEntity.ok(repairOrderMapper.toResponse(
+                repairOrderService.changeStatus(id, request, user.getUsername())));
     }
 
     @GetMapping("/orders/{id}/status-history")
     @Operation(summary = "История статусов заказа")
     public ResponseEntity<List<StatusHistoryResponse>> getStatusHistory(@PathVariable Long id) {
-        return ResponseEntity.ok(repairOrderService.getStatusHistory(id));
+        return ResponseEntity.ok(repairOrderMapper.toStatusHistoryList(repairOrderService.getStatusHistory(id)));
     }
 
     // ========== Диагностика ==========
@@ -112,14 +133,15 @@ public class TechnicianController {
     @GetMapping("/diagnostics/order/{orderId}")
     @Operation(summary = "Получить диагностику по заказу")
     public ResponseEntity<DiagnosticResponse> getDiagnostic(@PathVariable Long orderId) {
-        return ResponseEntity.ok(diagnosticService.getByOrderId(orderId));
+        return ResponseEntity.ok(diagnosticMapper.toResponse(diagnosticService.getByOrderId(orderId)));
     }
 
     @PostMapping("/diagnostics")
     @Operation(summary = "Записать результат диагностики")
     public ResponseEntity<DiagnosticResponse> createDiagnostic(@Valid @RequestBody CreateDiagnosticRequest request,
                                                                 @AuthenticationPrincipal UserDetails user) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(diagnosticService.create(request, user.getUsername()));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(diagnosticMapper.toResponse(diagnosticService.create(request, user.getUsername())));
     }
 
     @PutMapping("/diagnostics/{id}")
@@ -127,7 +149,8 @@ public class TechnicianController {
     public ResponseEntity<DiagnosticResponse> updateDiagnostic(@PathVariable Long id,
                                                                 @Valid @RequestBody UpdateDiagnosticRequest request,
                                                                 @AuthenticationPrincipal UserDetails user) {
-        return ResponseEntity.ok(diagnosticService.update(id, request, user.getUsername()));
+        return ResponseEntity.ok(diagnosticMapper.toResponse(
+                diagnosticService.update(id, request, user.getUsername())));
     }
 
     // ========== Работы ==========
@@ -141,9 +164,15 @@ public class TechnicianController {
     }
 
     @GetMapping("/receipts/order/{orderId}")
-    @Operation(summary = "Получить чек заказа")
+    @Operation(summary = "Получить чек заказа со списком работ и платежей")
     public ResponseEntity<ru.papkov.repairlog.application.dto.receipt.ReceiptResponse> getReceipt(@PathVariable Long orderId) {
-        return ResponseEntity.ok(receiptService.getByOrderId(orderId));
+        // B-05: Маппер намеренно игнорирует works/payments (@Mapping ignore = true).
+        // Заполняем их здесь отдельными вызовами, как предписано javadoc маппера.
+        ru.papkov.repairlog.domain.model.Receipt receipt = receiptService.getByOrderId(orderId);
+        ru.papkov.repairlog.application.dto.receipt.ReceiptResponse response = receiptMapper.toResponse(receipt);
+        response.setWorks(receiptMapper.toWorkResponseList(receiptService.getWorksByReceipt(receipt)));
+        response.setPayments(receiptMapper.toPaymentResponseList(receiptService.getPaymentsByReceipt(receipt)));
+        return ResponseEntity.ok(response);
     }
 
     // ========== Склад ==========
@@ -151,19 +180,19 @@ public class TechnicianController {
     @GetMapping("/inventory")
     @Operation(summary = "Все товары на складе")
     public ResponseEntity<List<InventoryItemResponse>> getAllInventory() {
-        return ResponseEntity.ok(inventoryService.getAll());
+        return ResponseEntity.ok(inventoryItemMapper.toResponseList(inventoryService.getAll()));
     }
 
     @GetMapping("/inventory/search")
     @Operation(summary = "Поиск по складу")
     public ResponseEntity<List<InventoryItemResponse>> searchInventory(@RequestParam String query) {
-        return ResponseEntity.ok(inventoryService.search(query));
+        return ResponseEntity.ok(inventoryItemMapper.toResponseList(inventoryService.search(query)));
     }
 
     @GetMapping("/inventory/low-stock")
     @Operation(summary = "Товары с низким остатком")
     public ResponseEntity<List<InventoryItemResponse>> getLowStock() {
-        return ResponseEntity.ok(inventoryService.getLowStock());
+        return ResponseEntity.ok(inventoryItemMapper.toResponseList(inventoryService.getLowStock()));
     }
 
     @PostMapping("/inventory/{itemId}/consume")
@@ -196,14 +225,15 @@ public class TechnicianController {
             @Valid @RequestBody CreateSupplyRequestRequest request,
             @AuthenticationPrincipal UserDetails user) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(supplyRequestService.create(request, user.getUsername()));
+                .body(supplyRequestMapper.toResponse(supplyRequestService.create(request, user.getUsername())));
     }
 
     @GetMapping("/supply-requests/my")
     @Operation(summary = "Мои заявки на поставку")
     public ResponseEntity<List<SupplyRequestResponse>> getMySupplyRequests(
             @AuthenticationPrincipal UserDetails user) {
-        return ResponseEntity.ok(supplyRequestService.getByEmployee(user.getUsername()));
+        return ResponseEntity.ok(supplyRequestMapper.toResponseList(
+                supplyRequestService.getByEmployee(user.getUsername())));
     }
 
     // ========== Документы (PDF) ==========

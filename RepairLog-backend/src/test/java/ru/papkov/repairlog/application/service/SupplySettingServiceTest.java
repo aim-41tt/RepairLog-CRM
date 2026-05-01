@@ -54,7 +54,7 @@ class SupplySettingServiceTest {
     void getAll_returnsList() {
         when(settingRepository.findAll()).thenReturn(List.of(testSetting));
 
-        List<SupplySettingResponse> result = supplySettingService.getAll();
+        List<SupplySetting> result = supplySettingService.getAll();
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getSettingKey()).isEqualTo("auto_reorder_enabled");
@@ -66,7 +66,7 @@ class SupplySettingServiceTest {
         when(settingRepository.findBySettingKey("auto_reorder_enabled"))
                 .thenReturn(Optional.of(testSetting));
 
-        SupplySettingResponse result = supplySettingService.getByKey("auto_reorder_enabled");
+        SupplySetting result = supplySettingService.getByKey("auto_reorder_enabled");
 
         assertThat(result.getSettingValue()).isEqualTo("true");
     }
@@ -151,7 +151,7 @@ class SupplySettingServiceTest {
         when(employeeRepository.findByLogin("admin")).thenReturn(Optional.of(testAdmin));
         when(settingRepository.save(any(SupplySetting.class))).thenReturn(testSetting);
 
-        SupplySettingResponse result = supplySettingService.update("auto_reorder_enabled", request, "admin");
+        SupplySetting result = supplySettingService.update("auto_reorder_enabled", request, "admin");
 
         assertThat(testSetting.getSettingValue()).isEqualTo("false");
         assertThat(testSetting.getModifiedBy()).isEqualTo(testAdmin);

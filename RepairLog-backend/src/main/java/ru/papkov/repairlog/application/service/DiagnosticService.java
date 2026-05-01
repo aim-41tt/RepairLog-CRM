@@ -10,6 +10,9 @@ import ru.papkov.repairlog.domain.repository.*;
 
 /**
  * Сервис управления диагностикой устройств.
+ * <p>
+ * Возвращает entity — DTO-конверсия выполняется в контроллерах через маппер.
+ * </p>
  *
  * @author aim-41tt
  */
@@ -35,17 +38,16 @@ public class DiagnosticService {
     }
 
     @Transactional(readOnly = true)
-    public DiagnosticResponse getByOrderId(Long orderId) {
-        Diagnostic diag = diagnosticRepository.findByRepairOrderId(orderId)
+    public Diagnostic getByOrderId(Long orderId) {
+        return diagnosticRepository.findByRepairOrderId(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Диагностика не найдена для заказа: " + orderId));
-        return toResponse(diag);
     }
 
     /**
      * Создание результата диагностики (TECHNICIAN).
      */
     @Transactional
-    public DiagnosticResponse create(CreateDiagnosticRequest request, String performedByLogin) {
+    public Diagnostic create(CreateDiagnosticRequest request, String performedByLogin) {
         RepairOrder order = repairOrderRepository.findById(request.getRepairOrderId())
                 .orElseThrow(() -> new EntityNotFoundException("Заказ не найден"));
         Employee performedBy = employeeRepository.findByLogin(performedByLogin)
@@ -77,33 +79,20 @@ public class DiagnosticService {
             statusHistoryRepository.save(history);
         });
 
-        return toResponse(saved);
+        return saved;
     }
 
     /**
      * Обновление результата диагностики (TECHNICIAN).
      */
     @Transactional
-    public DiagnosticResponse update(Long diagnosticId, UpdateDiagnosticRequest request, String updatedByLogin) {
+    public Diagnostic update(Long diagnosticId, UpdateDiagnosticRequest request, String updatedByLogin) {
         Diagnostic diag = diagnosticRepository.findById(diagnosticId)
                 .orElseThrow(() -> new EntityNotFoundException("Диагностика не найдена: " + diagnosticId));
 
         diag.setDescription(request.getDescription());
         diag.setSolution(request.getSolution());
 
-        Diagnostic saved = diagnosticRepository.save(diag);
-        return toResponse(saved);
-    }
-
-    private DiagnosticResponse toResponse(Diagnostic d) {
-        DiagnosticResponse r = new DiagnosticResponse();
-        r.setId(d.getId());
-        r.setRepairOrderId(d.getRepairOrder().getId());
-        r.setOrderNumber(d.getRepairOrder().getOrderNumber());
-        r.setDescription(d.getDescription());
-        r.setSolution(d.getSolution());
-        r.setPerformedByName(d.getPerformedBy().getFullName());
-        r.setCreatedAt(d.getCreatedAt());
-        return r;
+        return diagnosticRepository.save(diag);
     }
 }

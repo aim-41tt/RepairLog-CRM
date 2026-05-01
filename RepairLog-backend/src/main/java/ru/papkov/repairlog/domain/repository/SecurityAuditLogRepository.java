@@ -65,8 +65,9 @@ public interface SecurityAuditLogRepository extends JpaRepository<SecurityAuditL
      * @return список записей
      */
     @Query("SELECT s FROM SecurityAuditLog s WHERE s.employee = :employee " +
-           "AND s.eventType = 'LOGIN_FAILED' AND s.createdAt >= :since")
-    List<SecurityAuditLog> findRecentFailedLogins(@Param("employee") Employee employee, 
+           "AND s.eventType = ru.papkov.repairlog.domain.model.SecurityAuditLog.EventType.LOGIN_FAILED " +
+           "AND s.createdAt >= :since")
+    List<SecurityAuditLog> findRecentFailedLogins(@Param("employee") Employee employee,
                                                    @Param("since") LocalDateTime since);
 
     /**

@@ -9,10 +9,14 @@ import ru.papkov.repairlog.domain.model.*;
 import ru.papkov.repairlog.domain.repository.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Сервис управления чеками и платежами.
+ * <p>
+ * Возвращает entity — DTO-конверсия выполняется в контроллерах через маппер.
+ * Для связанных коллекций (работы/платежи) используются специальные методы
+ * {@link #getWorksByReceipt(Receipt)} и {@link #getPaymentsByReceipt(Receipt)}.
+ * </p>
  *
  * @author aim-41tt
  */
@@ -41,12 +45,27 @@ public class ReceiptService {
      * Получить чек по заказу на ремонт.
      */
     @Transactional(readOnly = true)
-    public ReceiptResponse getByOrderId(Long orderId) {
+    public Receipt getByOrderId(Long orderId) {
         RepairOrder order = repairOrderRepository.findById(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Заказ не найден"));
-        Receipt receipt = receiptRepository.findByRepairOrder(order)
+        return receiptRepository.findByRepairOrder(order)
                 .orElseThrow(() -> new EntityNotFoundException("Чек не найден для заказа: " + orderId));
-        return toResponse(receipt);
+    }
+
+    /**
+     * Получить работы, относящиеся к чеку.
+     */
+    @Transactional(readOnly = true)
+    public List<RepairWork> getWorksByReceipt(Receipt receipt) {
+        return repairWorkRepository.findByReceipt(receipt);
+    }
+
+    /**
+     * Получить платежи, относящиеся к чеку.
+     */
+    @Transactional(readOnly = true)
+    public List<ReceiptPayment> getPaymentsByReceipt(Receipt receipt) {
+        return receiptPaymentRepository.findByReceipt(receipt);
     }
 
     /**
@@ -83,11 +102,32 @@ public class ReceiptService {
     /**
      * Провести оплату (RECEPTIONIST).
      * Используется PESSIMISTIC_WRITE для предотвращения race condition при параллельных платежах.
+     *
+     * <p>Проверки перед проведением платежа:</p>
+     * <ul>
+     *   <li>B-03: заказ должен иметь финальный или готовый статус (READY / ISSUED).</li>
+     *   <li>B-04: transactionId уникален для данного чека — предотвращает дубли.</li>
+     * </ul>
      */
     @Transactional
     public void processPayment(CreatePaymentRequest request, String acceptedByLogin) {
         Receipt receipt = receiptRepository.findByIdForUpdate(request.getReceiptId())
                 .orElseThrow(() -> new EntityNotFoundException("Чек не найден"));
+
+        // B-03: разрешаем оплату только когда заказ готов к выдаче или уже выдан
+        String statusCode = receipt.getRepairOrder().getCurrentStatus().getCode();
+        if (!java.util.Set.of(RepairOrderStatusCode.READY, RepairOrderStatusCode.ISSUED).contains(statusCode)) {
+            throw new IllegalStateException(
+                    "Оплата доступна только для заказов в статусе «Готов к выдаче» или «Выдан». " +
+                    "Текущий статус: " + receipt.getRepairOrder().getCurrentStatus().getName());
+        }
+
+        // B-04: идемпотентность — отклоняем повторный transactionId
+        String transactionId = request.getTransactionId();
+        if (transactionId != null && !transactionId.isBlank() &&
+                receiptPaymentRepository.existsByReceiptAndTransactionId(receipt, transactionId)) {
+            throw new IllegalStateException("Платёж с таким идентификатором транзакции уже проведён");
+        }
 
         Employee acceptedBy = employeeRepository.findByLogin(acceptedByLogin)
                 .orElseThrow(() -> new EntityNotFoundException("Сотрудник не найден"));
@@ -103,52 +143,8 @@ public class ReceiptService {
         payment.setPaidAmount(request.getPaidAmount());
         payment.setPaymentMethod(ReceiptPayment.PaymentMethod.valueOf(request.getPaymentMethod()));
         payment.setAcceptedBy(acceptedBy);
-        payment.setTransactionId(request.getTransactionId());
+        payment.setTransactionId(transactionId);
         receiptPaymentRepository.save(payment);
         // обновление payment_status идёт через триггер в БД
-    }
-
-    // ========== Helpers ==========
-
-    private ReceiptResponse toResponse(Receipt receipt) {
-        ReceiptResponse r = new ReceiptResponse();
-        r.setId(receipt.getId());
-        r.setRepairOrderId(receipt.getRepairOrder().getId());
-        r.setOrderNumber(receipt.getRepairOrder().getOrderNumber());
-        r.setSubtotal(receipt.getSubtotal());
-        r.setDiscountAmount(receipt.getDiscountAmount());
-        r.setTaxAmount(receipt.getTaxAmount());
-        r.setTotalAmount(receipt.getTotalAmount());
-        r.setPaymentStatus(receipt.getPaymentStatus().name());
-        r.setLocked(receipt.getLocked());
-        r.setCreatedAt(receipt.getCreatedAt());
-
-        // работы
-        List<ReceiptResponse.RepairWorkResponse> works = repairWorkRepository.findByReceipt(receipt).stream()
-                .map(w -> {
-                    ReceiptResponse.RepairWorkResponse wr = new ReceiptResponse.RepairWorkResponse();
-                    wr.setId(w.getId());
-                    wr.setDescription(w.getDescription());
-                    wr.setPrice(w.getPrice());
-                    wr.setEmployeeName(w.getEmployee().getFullName());
-                    wr.setCompletedAt(w.getCompletedAt());
-                    return wr;
-                }).collect(Collectors.toList());
-        r.setWorks(works);
-
-        // платежи
-        List<ReceiptResponse.PaymentResponse> payments = receiptPaymentRepository.findByReceipt(receipt).stream()
-                .map(p -> {
-                    ReceiptResponse.PaymentResponse pr = new ReceiptResponse.PaymentResponse();
-                    pr.setId(p.getId());
-                    pr.setPaidAmount(p.getPaidAmount());
-                    pr.setPaymentMethod(p.getPaymentMethod().name());
-                    pr.setPaidAt(p.getPaidAt());
-                    pr.setAcceptedByName(p.getAcceptedBy().getFullName());
-                    return pr;
-                }).collect(Collectors.toList());
-        r.setPayments(payments);
-
-        return r;
     }
 }

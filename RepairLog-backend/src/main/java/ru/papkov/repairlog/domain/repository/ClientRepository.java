@@ -55,6 +55,14 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     List<Client> searchByFullName(@Param("searchTerm") String searchTerm);
 
     /**
+     * Найти клиентов по дате рождения (для поиска при анонимизации, 152-ФЗ).
+     *
+     * @param dateBirth дата рождения
+     * @return список клиентов
+     */
+    List<Client> findByDateBirth(LocalDate dateBirth);
+
+    /**
      * Найти клиентов, у которых истёк срок хранения персональных данных.
      *
      * @param currentDate текущая дата

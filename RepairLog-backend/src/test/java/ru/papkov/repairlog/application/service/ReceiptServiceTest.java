@@ -9,14 +9,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.papkov.repairlog.application.dto.receipt.AddRepairWorkRequest;
 import ru.papkov.repairlog.application.dto.receipt.CreatePaymentRequest;
-import ru.papkov.repairlog.application.dto.receipt.ReceiptResponse;
 import ru.papkov.repairlog.domain.exception.BusinessLogicException;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.*;
 import ru.papkov.repairlog.domain.repository.*;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -65,7 +63,6 @@ class ReceiptServiceTest {
         testEmployee.setSurname("Техников");
         testEmployee.setLogin("tech1");
 
-        // D7: назначаем мастера на заказ, чтобы проверка владения чеком проходила
         testOrder.setAssignedMaster(testEmployee);
     }
 
@@ -74,13 +71,11 @@ class ReceiptServiceTest {
     void getByOrderId_returnsReceipt() {
         when(repairOrderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
         when(receiptRepository.findByRepairOrder(testOrder)).thenReturn(Optional.of(testReceipt));
-        when(repairWorkRepository.findByReceipt(testReceipt)).thenReturn(List.of());
-        when(receiptPaymentRepository.findByReceipt(testReceipt)).thenReturn(List.of());
 
-        ReceiptResponse result = receiptService.getByOrderId(1L);
+        Receipt result = receiptService.getByOrderId(1L);
 
         assertThat(result.getId()).isEqualTo(1L);
-        assertThat(result.getOrderNumber()).isEqualTo("RO-20260228-0001");
+        assertThat(result.getRepairOrder().getOrderNumber()).isEqualTo("RO-20260228-0001");
         assertThat(result.getTotalAmount()).isEqualByComparingTo("5500.00");
     }
 
@@ -148,14 +143,14 @@ class ReceiptServiceTest {
         receiptService.processPayment(request, "tech1");
 
         verify(receiptPaymentRepository).save(any(ReceiptPayment.class));
-        verify(receiptRepository).save(testReceipt); // чек блокируется при первом платеже
+        verify(receiptRepository).save(testReceipt);
         assertThat(testReceipt.getLocked()).isTrue();
     }
 
     @Test
     @DisplayName("processPayment - не блокирует повторно при втором платеже")
     void processPayment_doesNotRelockOnSecondPayment() {
-        testReceipt.lock(testEmployee); // уже заблокирован
+        testReceipt.lock(testEmployee);
 
         CreatePaymentRequest request = new CreatePaymentRequest();
         request.setReceiptId(1L);
@@ -168,6 +163,6 @@ class ReceiptServiceTest {
         receiptService.processPayment(request, "tech1");
 
         verify(receiptPaymentRepository).save(any(ReceiptPayment.class));
-        verify(receiptRepository, never()).save(testReceipt); // не сохраняет повторно
+        verify(receiptRepository, never()).save(testReceipt);
     }
 }

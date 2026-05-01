@@ -3,18 +3,24 @@ package ru.papkov.repairlog.application.service;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.papkov.repairlog.application.dto.order.*;
+import ru.papkov.repairlog.application.dto.order.ChangeStatusRequest;
+import ru.papkov.repairlog.application.dto.order.CreateRepairOrderRequest;
 import ru.papkov.repairlog.domain.exception.BusinessLogicException;
 import ru.papkov.repairlog.domain.exception.EntityNotFoundException;
 import ru.papkov.repairlog.domain.model.*;
 import ru.papkov.repairlog.domain.repository.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 /**
  * Сервис управления заказами на ремонт.
  * Основной бизнес-процесс системы: приёмка → диагностика → ремонт → выдача.
+ * <p>
+ * Возвращает entity — DTO-конверсия выполняется в контроллерах через маппер.
+ * Поля totalAmount/paymentStatus в DTO заполняются контроллером через
+ * {@link #findReceiptByOrder(RepairOrder)}.
+ * </p>
  *
  * @author aim-41tt
  */
@@ -52,42 +58,38 @@ public class RepairOrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<RepairOrderResponse> getAllActive() {
-        return repairOrderRepository.findAllActiveOrders().stream()
-                .map(this::toResponse).collect(Collectors.toList());
+    public List<RepairOrder> getAllActive() {
+        return repairOrderRepository.findAllActiveOrders();
     }
 
     @Transactional(readOnly = true)
-    public List<RepairOrderResponse> getUnassigned() {
-        return repairOrderRepository.findUnassignedOrders().stream()
-                .map(this::toResponse).collect(Collectors.toList());
+    public List<RepairOrder> getUnassigned() {
+        return repairOrderRepository.findUnassignedOrders();
     }
 
     @Transactional(readOnly = true)
-    public List<RepairOrderResponse> getByMaster(Long masterId) {
+    public List<RepairOrder> getByMaster(Long masterId) {
         Employee master = employeeRepository.findById(masterId)
                 .orElseThrow(() -> new EntityNotFoundException("Мастер не найден: " + masterId));
-        return repairOrderRepository.findActiveOrdersByMaster(master).stream()
-                .map(this::toResponse).collect(Collectors.toList());
+        return repairOrderRepository.findActiveOrdersByMaster(master);
     }
 
     @Transactional(readOnly = true)
-    public RepairOrderResponse getById(Long id) {
-        return toResponse(findOrder(id));
+    public RepairOrder getById(Long id) {
+        return findOrder(id);
     }
 
     @Transactional(readOnly = true)
-    public RepairOrderResponse getByOrderNumber(String orderNumber) {
-        return toResponse(repairOrderRepository.findByOrderNumber(orderNumber)
-                .orElseThrow(() -> new EntityNotFoundException("Заказ не найден: " + orderNumber)));
+    public RepairOrder getByOrderNumber(String orderNumber) {
+        return repairOrderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new EntityNotFoundException("Заказ не найден: " + orderNumber));
     }
 
     @Transactional(readOnly = true)
-    public List<RepairOrderResponse> getByClient(Long clientId) {
+    public List<RepairOrder> getByClient(Long clientId) {
         Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new EntityNotFoundException("Клиент не найден: " + clientId));
-        return repairOrderRepository.findByClient(client).stream()
-                .map(this::toResponse).collect(Collectors.toList());
+        return repairOrderRepository.findByClient(client);
     }
 
     /**
@@ -95,7 +97,7 @@ public class RepairOrderService {
      * Статус автоматически устанавливается "Новая".
      */
     @Transactional
-    public RepairOrderResponse create(CreateRepairOrderRequest request, String acceptedByLogin) {
+    public RepairOrder create(CreateRepairOrderRequest request, String acceptedByLogin) {
         Client client = clientRepository.findById(request.getClientId())
                 .orElseThrow(() -> new EntityNotFoundException("Клиент не найден"));
         Device device = deviceRepository.findById(request.getDeviceId())
@@ -136,14 +138,15 @@ public class RepairOrderService {
         // записываем в историю статусов
         recordStatusChange(saved, newStatus, acceptedBy, "Заказ создан");
 
-        return toResponse(saved);
+        // возвращаем с загруженными lazy-ассоциациями (device.deviceType, model.brand и др.)
+        return findOrder(saved.getId());
     }
 
     /**
      * Назначение мастера на заказ (TECHNICIAN берёт заказ или ADMIN назначает).
      */
     @Transactional
-    public RepairOrderResponse assignMaster(Long orderId, Long masterId) {
+    public RepairOrder assignMaster(Long orderId, Long masterId) {
         RepairOrder order = findOrder(orderId);
         Employee master = employeeRepository.findById(masterId)
                 .orElseThrow(() -> new EntityNotFoundException("Мастер не найден"));
@@ -162,14 +165,14 @@ public class RepairOrderService {
         RepairOrder saved = repairOrderRepository.save(order);
         recordStatusChange(saved, accepted, master, "Мастер назначен: " + master.getFullName());
 
-        return toResponse(saved);
+        return saved;
     }
 
     /**
      * Изменение статуса заказа.
      */
     @Transactional
-    public RepairOrderResponse changeStatus(Long orderId, ChangeStatusRequest request, String changedByLogin) {
+    public RepairOrder changeStatus(Long orderId, ChangeStatusRequest request, String changedByLogin) {
         RepairOrder order = findOrder(orderId);
         RepairStatus newStatus = repairStatusRepository.findById(request.getStatusId())
                 .orElseThrow(() -> new EntityNotFoundException("Статус не найден"));
@@ -186,34 +189,33 @@ public class RepairOrderService {
         RepairOrder saved = repairOrderRepository.save(order);
         recordStatusChange(saved, newStatus, changedBy, request.getComment());
 
-        return toResponse(saved);
+        return saved;
     }
 
     @Transactional(readOnly = true)
-    public List<StatusHistoryResponse> getStatusHistory(Long orderId) {
+    public List<StatusHistory> getStatusHistory(Long orderId) {
         RepairOrder order = findOrder(orderId);
-        return statusHistoryRepository.findByRepairOrderOrderByChangedAtDesc(order).stream()
-                .map(h -> {
-                    StatusHistoryResponse r = new StatusHistoryResponse();
-                    r.setId(h.getId());
-                    r.setStatusName(h.getStatus().getName());
-                    r.setChangedByName(h.getChangedBy().getFullName());
-                    r.setChangedAt(h.getChangedAt());
-                    r.setComment(h.getComment());
-                    return r;
-                }).collect(Collectors.toList());
+        return statusHistoryRepository.findByRepairOrderOrderByChangedAtDesc(order);
     }
 
     @Transactional(readOnly = true)
-    public List<RepairOrderResponse> searchMultiField(String query) {
-        return repairOrderRepository.searchMultiField(query).stream()
-                .map(this::toResponse).collect(Collectors.toList());
+    public List<RepairOrder> searchMultiField(String query) {
+        return repairOrderRepository.searchMultiField(query);
+    }
+
+    /**
+     * Возвращает чек, привязанный к заказу (если существует).
+     * Используется контроллером для дополнения DTO полями totalAmount/paymentStatus.
+     */
+    @Transactional(readOnly = true)
+    public Optional<Receipt> findReceiptByOrder(RepairOrder order) {
+        return receiptRepository.findByRepairOrder(order);
     }
 
     // ========== Helpers ==========
 
     private RepairOrder findOrder(Long id) {
-        return repairOrderRepository.findById(id)
+        return repairOrderRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new EntityNotFoundException("Заказ не найден: " + id));
     }
 
@@ -224,48 +226,5 @@ public class RepairOrderService {
         history.setChangedBy(changedBy);
         history.setComment(comment);
         statusHistoryRepository.save(history);
-    }
-
-    private RepairOrderResponse toResponse(RepairOrder o) {
-        RepairOrderResponse r = new RepairOrderResponse();
-        r.setId(o.getId());
-        r.setOrderNumber(o.getOrderNumber());
-        r.setClientId(o.getClient().getId());
-        r.setClientFullName(o.getClient().getFullName());
-        r.setClientPhone(o.getClient().getPhone());
-        r.setDeviceId(o.getDevice().getId());
-        r.setDeviceDescription(o.getDevice().getDescription());
-        r.setAcceptedByName(o.getAcceptedBy().getFullName());
-        r.setCurrentStatusName(o.getCurrentStatus().getName());
-        r.setCurrentStatusId(o.getCurrentStatus().getId());
-
-        if (o.getAssignedMaster() != null) {
-            r.setAssignedMasterName(o.getAssignedMaster().getFullName());
-            r.setAssignedMasterId(o.getAssignedMaster().getId());
-        }
-        if (o.getPriority() != null) {
-            r.setPriorityName(o.getPriority().getName());
-        }
-
-        r.setClientComplaint(o.getClientComplaint());
-        r.setExternalCondition(o.getExternalCondition());
-        r.setWarrantyRepair(o.getWarrantyRepair());
-        r.setEstimatedCompletionDate(o.getEstimatedCompletionDate());
-        r.setActualCompletionDate(o.getActualCompletionDate());
-        r.setCreatedAt(o.getCreatedAt());
-
-        // подтягиваем данные чека, если чек уже создан
-        receiptRepository.findByRepairOrder(o).ifPresentOrElse(
-            receipt -> {
-                r.setTotalAmount(receipt.getTotalAmount());
-                r.setPaymentStatus(receipt.getPaymentStatus().name());
-            },
-            () -> {
-                r.setTotalAmount(java.math.BigDecimal.ZERO);
-                r.setPaymentStatus("UNPAID");
-            }
-        );
-
-        return r;
     }
 }
