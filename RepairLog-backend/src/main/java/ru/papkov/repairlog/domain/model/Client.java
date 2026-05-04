@@ -1,6 +1,7 @@
 package ru.papkov.repairlog.domain.model;
 
 import jakarta.persistence.*;
+import ru.papkov.repairlog.infrastructure.crypto.EncryptConverter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,24 +21,28 @@ public class Client extends BaseEntity {
 	/**
 	 * Имя клиента.
 	 */
-	@Column(name = "name", nullable = false, length = 100)
+	@Convert(converter = EncryptConverter.class)
+	@Column(name = "name", nullable = false, length = 512)
 	private String name;
 
 	/**
 	 * Фамилия клиента.
 	 */
-	@Column(name = "surname", nullable = false, length = 100)
+	@Convert(converter = EncryptConverter.class)
+	@Column(name = "surname", nullable = false, length = 512)
 	private String surname;
 
 	/**
 	 * Отчество клиента.
 	 */
-	@Column(name = "patronymic", length = 100)
+	@Convert(converter = EncryptConverter.class)
+	@Column(name = "patronymic", length = 512)
 	private String patronymic;
 
 	/**
 	 * Дата рождения клиента (опционально — B-16).
 	 */
+	
 	@Column(name = "date_birth")
 	private LocalDate dateBirth;
 
