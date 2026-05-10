@@ -1,0 +1,111 @@
+**Non-Commercial No-Derivatives Software License**  
+**Некоммерческая Лицензия без права на производные произведения**
+
+==============================================
+
+Copyright (c) 2026 aim-41tt. All Rights Reserved.
+
+### Важное уведомление / Important Notice
+
+Настоящая Лицензия предоставлена на двух языках: русском и английском.  
+В случае любых расхождений между текстами **преимущественную силу имеет русская версия**.
+
+This License is provided in Russian and English. In the event of any inconsistency between the two versions, **the Russian version shall prevail**.
+
+---
+
+### 1. Определения / 1. Definitions
+
+- **"Программное обеспечение" / "Software"** — означает исходный код, объектный код, документацию, изображения, файлы и любые другие материалы, содержащиеся в данном репозитории.  
+  Means the source code, object code, documentation, images, files, and any other materials contained in this repository.
+
+- **"Лицензиар" / "Licensor"** — aim-41tt.
+
+- **"Вы" / "Лицензиат" / "You" / "Licensee"** — любое физическое или юридическое лицо, которое получает доступ к Программному обеспечению.  
+  Any individual or legal entity that obtains access to the Software.
+
+- **"Некоммерческое использование" / "Non-Commercial Use"** — использование, которое не направлено на получение прямой или косвенной коммерческой выгоды, включая (но не ограничиваясь) продажу, сдачу в аренду, использование в платных продуктах, услугах, SaaS, рекламе или внутри коммерческой организации для получения прибыли.  
+  Use that is not intended to generate direct or indirect commercial advantage, including (but not limited to) sale, rental, use in paid products, services, SaaS, advertising, or within a commercial organization for profit.
+
+- **"Производные работы" / "Derivative Works"** — любые модификации, переводы, адаптации, переработки, декомпиляция, обратная разработка или создание работ, основанных на Программном обеспечении.  
+  Any modifications, translations, adaptations, reworkings, decompilation, reverse engineering, or creation of works based on the Software.
+
+### 2. Предоставление прав / 2. Grant of Rights
+
+Настоящей Лицензией Лицензиар предоставляет Вам всемирную, неисключительную, безвозмездную, непередаваемую и отзывную лицензию на:
+
+The Licensor hereby grants You a worldwide, non-exclusive, royalty-free, non-transferable, and revocable license to:
+
+- Копирование и распространение **неизменной** копии Программного обеспечения в полном объёме.  
+  Copy and distribute **verbatim** copies of the Software in its entirety.
+
+- Использование Программного обеспечения **только в некоммерческих целях**.  
+  Use the Software **solely for non-commercial purposes**.
+
+### 3. Ограничения / 3. Restrictions
+
+Без предварительного письменного разрешения Лицензиара **запрещается**:
+
+Without the prior written permission of the Licensor, **You are prohibited from**:
+
+1. Использовать Программное обеспечение полностью или частично в любых коммерческих целях.  
+   Using the Software in whole or in part for any commercial purposes.
+
+2. Создавать, распространять или публично использовать любые Производные работы.  
+   Creating, distributing, or publicly using any Derivative Works.
+
+3. Удалять, изменять или скрывать любые уведомления об авторских правах, текст лицензии или иные указания на правообладателя.  
+   Removing, altering, or obscuring any copyright notices, license text, or other proprietary notices.
+
+4. Сублицензировать, передавать или переуступать права по настоящей лицензии.  
+   Sublicensing, transferring, or assigning the rights granted under this license.
+
+5. Использовать Программное обеспечение способом, который подразумевает поддержку или одобрение Лицензиара.  
+   Using the Software in any way that suggests support for or endorsement by the Licensor.
+
+### 4. Атрибуция / 4. Attribution
+
+При любом копировании, распространении или публичном использовании Вы обязаны:
+
+When copying, distributing, or publicly using the Software, You must:
+
+- Сохранять все уведомления об авторских правах.  
+  Retain all copyright notices.
+
+- Указывать автора оригинальной работы и ссылку на оригинальный репозиторий (где это практически возможно).  
+  Provide attribution to the original author and a link to the original repository (where reasonably practicable).
+
+### 5. Отказ от гарантий / 5. Disclaimer of Warranty
+
+Программное обеспечение предоставляется «КАК ЕСТЬ» (AS IS), без каких-либо гарантий, явных или подразумеваемых, включая (но не ограничиваясь) гарантии товарной пригодности, соответствия определённой цели и отсутствия нарушений прав третьих лиц.
+
+The Software is provided “AS IS”, without any warranties of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement.
+
+Лицензиар не несёт ответственности за любой прямой, косвенный, случайный, специальный, штрафной или косвенный ущерб, возникший в результате использования или невозможности использования Программного обеспечения.
+
+The Licensor shall not be liable for any direct, indirect, incidental, special, punitive, or consequential damages arising out of the use or inability to use the Software.
+
+### 6. Прекращение действия лицензии / 6. Termination
+
+Настоящая лицензия автоматически прекращает своё действие при любом нарушении её условий. В этом случае Вы обязаны немедленно прекратить любое использование и распространение Программного обеспечения.
+
+This license automatically terminates upon any violation of its terms. In such case, You must immediately cease all use and distribution of the Software.
+
+### 7. Прочие условия / 7. Miscellaneous
+
+- Настоящая лицензия регулируется законодательством Российской Федерации.  
+  This license is governed by the laws of the Russian Federation.
+
+- Любые споры подлежат рассмотрению в суде по месту регистрации Лицензиара.  
+  Any disputes shall be resolved in the courts at the Licensor’s place of registration.
+
+- Лицензиар в любой момент может изменить условия лицензии или выпустить новую версию.  
+  The Licensor may modify the terms of this license or release a new version at any time.
+
+---
+
+**Контакт для коммерческого использования / Contact for Commercial Use**
+
+Если вы желаете использовать данное Программное обеспечение в коммерческих целях или создать на его основе производные работы — свяжитесь с автором по адресу: **0505mustik@gmail.com**.
+
+If you wish to use this Software for commercial purposes or create Derivative Works based on it — please contact the author at: **0505mustik@gmail.com**.
